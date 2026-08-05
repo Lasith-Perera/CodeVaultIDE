@@ -32,6 +32,13 @@ fun main(){
     val code:StateFlow<String>
             = _code
 
+    private val _fileName = MutableStateFlow("Untitled.kt")
+    val fileName: StateFlow<String> = _fileName
+
+    fun setFileName(name: String) {
+        _fileName.value = name
+    }
+
 
 
     private val undoStack =

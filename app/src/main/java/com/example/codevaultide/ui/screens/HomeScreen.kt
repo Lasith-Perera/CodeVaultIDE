@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,13 +28,50 @@ data class RecentFile(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNewFileClick: () -> Unit = {},
+    onNewFileClick: (String) -> Unit = {},
     onOpenFileClick: () -> Unit = {},
     onRunClick: () -> Unit = {},
     onHistoryClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onRecentFileClick: (RecentFile) -> Unit = {}
 ) {
+    var showNewFileDialog by remember { mutableStateOf(false) }
+    var newFileName by remember { mutableStateOf("") }
+
+    if (showNewFileDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewFileDialog = false },
+            title = { Text("Create New File") },
+            text = {
+                OutlinedTextField(
+                    value = newFileName,
+                    onValueChange = { newFileName = it },
+                    label = { Text("File Name (e.g. Main.kt)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newFileName.isNotBlank()) {
+                            onNewFileClick(newFileName)
+                            showNewFileDialog = false
+                            newFileName = ""
+                        }
+                    }
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewFileDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     val recentFiles = listOf(
         RecentFile("Main.kt", "Kotlin Source", "2 mins ago", 12),
         RecentFile("build.gradle.kts", "Gradle Script", "1 hour ago", 5),
@@ -96,7 +133,7 @@ fun HomeScreen(
                         title = "Create New File",
                         description = "Start a fresh Kotlin or Markdown project",
                         icon = Icons.Default.Add,
-                        onClick = onNewFileClick
+                        onClick = { showNewFileDialog = true }
                     )
                     ActionCard(
                         title = "Open Existing File",

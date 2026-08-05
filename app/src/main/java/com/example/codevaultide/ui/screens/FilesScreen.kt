@@ -57,16 +57,19 @@ fun FilesScreen(
 
 
             FileItem("Main.kt") {
+                editorViewModel.setFileName("Main.kt")
                 editorViewModel.updateCode("// Opened Main.kt\npackage com.example.codevault\n\nfun main() {\n    println(\"Main file\")\n}")
                 onFileClick()
             }
 
             FileItem("Login.kt") {
+                editorViewModel.setFileName("Login.kt")
                 editorViewModel.updateCode("// Opened Login.kt\nclass Login {\n    fun authenticate() { }\n}")
                 onFileClick()
             }
 
             FileItem("README.md") {
+                editorViewModel.setFileName("README.md")
                 editorViewModel.updateCode("# CodeVault IDE\n\nThis is a local IDE with version control.")
                 onFileClick()
             }
