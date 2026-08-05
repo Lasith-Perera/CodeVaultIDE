@@ -138,8 +138,9 @@ fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()){
 
             HomeScreen(
 
-                onNewFileClick = {
-
+                onNewFileClick = { fileName ->
+                    editorViewModel.setFileName(fileName)
+                    editorViewModel.setCode("// New file: $fileName\n\nfun main() {\n    println(\"Hello $fileName\")\n}")
                     navController.navigate(
                         Routes.EDITOR
                     )
@@ -181,6 +182,7 @@ fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()){
 
                 onRecentFileClick = { file ->
                     // Set dummy content based on filename for demonstration
+                    editorViewModel.setFileName(file.name)
                     editorViewModel.setCode("// Content for ${file.name}\n\n// TODO: Implement actual file loading\n\nfun main() {\n    println(\"Opening ${file.name}\")\n}")
                     navController.navigate(Routes.EDITOR)
                 }

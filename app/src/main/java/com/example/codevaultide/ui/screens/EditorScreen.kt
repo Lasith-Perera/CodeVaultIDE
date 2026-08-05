@@ -49,6 +49,7 @@ fun EditorScreen(
     onHistoryClick: () -> Unit
 ) {
     val code by viewModel.code.collectAsState()
+    val fileName by viewModel.fileName.collectAsState()
     val fontSize by settingsViewModel.fontSize.collectAsState()
     val isAutoSaveEnabled by settingsViewModel.isAutoSaveEnabled.collectAsState()
     
@@ -89,9 +90,9 @@ fun EditorScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Main.kt", maxLines = 1)
+                        Text(fileName, maxLines = 1)
                         Text(
-                            text = "Kotlin Source",
+                            text = if (fileName.endsWith(".kt")) "Kotlin Source" else "Markdown File",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
