@@ -1,58 +1,77 @@
 package com.example.codevaultide.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.SaveAs
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.codevaultide.compiler.CompilerManager
 import com.example.codevaultide.editor.EditorViewModel
-
-import com.example.codevaultide.ui.settings.SettingsViewModel
+import kotlinx.coroutines.launch
+import java.util.regex.Pattern
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(
     viewModel: EditorViewModel,
-    settingsViewModel: SettingsViewModel,
     onBackClick: () -> Unit,
-    onRunClick: () -> Unit,
-    onHistoryClick: () -> Unit
+    onRunClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {}
 ) {
     val code by viewModel.code.collectAsState()
-    val fileName by viewModel.fileName.collectAsState()
-    val fontSize by settingsViewModel.fontSize.collectAsState()
-    val isAutoSaveEnabled by settingsViewModel.isAutoSaveEnabled.collectAsState()
-    
+    val compilerManager = remember { CompilerManager() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val clipboardManager = remember {
+        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    }
+
+    var fileName by remember { mutableStateOf("Main.py") }
+    var languageName by remember { mutableStateOf("Python 3") }
+
     var editorValue by remember {
         mutableStateOf(
             TextFieldValue(
@@ -62,20 +81,18 @@ fun EditorScreen(
         )
     }
 
+    // States
     var showSearchDialog by remember { mutableStateOf(false) }
+    var showSaveAsDialog by remember { mutableStateOf(false) }
+    var showTerminalSheet by remember { mutableStateOf(false) }
+    var terminalOutput by remember { mutableStateOf("") }
+    var stdinInput by remember { mutableStateOf("") }
+    var isExecuting by remember { mutableStateOf(false) }
+    var executionTimeMs by remember { mutableStateOf<Long?>(null) }
 
-    // Sync from ViewModel if needed (e.g. after rollback)
     LaunchedEffect(code) {
         if (code != editorValue.text) {
             editorValue = editorValue.copy(text = code)
-        }
-    }
-
-    // Auto Save Logic
-    LaunchedEffect(editorValue.text) {
-        if (isAutoSaveEnabled && editorValue.text != code) {
-            // In a real app, we might want to debounce this
-            viewModel.updateCode(editorValue.text)
         }
     }
 
@@ -85,73 +102,468 @@ fun EditorScreen(
     val cursorLine = textBeforeCursor.count { it == '\n' } + 1
     val cursorColumn = textBeforeCursor.substringAfterLast('\n').length + 1
 
+    fun handleCopy() {
+        val selectedText = if (editorValue.selection.collapsed) {
+            editorValue.text
+        } else {
+            editorValue.text.substring(editorValue.selection.min, editorValue.selection.max)
+        }
+        if (selectedText.isNotEmpty()) {
+            val clip = ClipData.newPlainText("Copied Code", selectedText)
+            clipboardManager.setPrimaryClip(clip)
+            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun handleCut() {
+        if (!editorValue.selection.collapsed) {
+            val start = editorValue.selection.min
+            val end = editorValue.selection.max
+            val selectedText = editorValue.text.substring(start, end)
+
+            val clip = ClipData.newPlainText("Cut Code", selectedText)
+            clipboardManager.setPrimaryClip(clip)
+
+            val newText = editorValue.text.removeRange(start, end)
+            editorValue = TextFieldValue(newText, selection = TextRange(start))
+            viewModel.updateCode(newText)
+        }
+    }
+
+    fun handlePaste() {
+        val clipData = clipboardManager.primaryClip
+        if (clipData != null && clipData.itemCount > 0) {
+            val pasteText = clipData.getItemAt(0).text?.toString() ?: ""
+            if (pasteText.isNotEmpty()) {
+                val start = editorValue.selection.min
+                val end = editorValue.selection.max
+                val newText = editorValue.text.replaceRange(start, end, pasteText)
+                val newCursorPos = start + pasteText.length
+
+                editorValue = TextFieldValue(newText, selection = TextRange(newCursorPos))
+                viewModel.updateCode(newText)
+            }
+        }
+    }
+
+    fun performSave() {
+        viewModel.updateCode(editorValue.text)
+        Toast.makeText(context, "$fileName saved successfully!", Toast.LENGTH_SHORT).show()
+    }
+
+    fun runCodeExecution() {
+        showTerminalSheet = true
+        isExecuting = true
+        terminalOutput = ""
+        val startTime = System.currentTimeMillis()
+
+        scope.launch {
+            val result = compilerManager.compileAndRun(
+                language = if (fileName.endsWith(".py")) "python" else "cpp",
+                code = editorValue.text,
+                stdin = stdinInput
+            )
+            terminalOutput = result
+            executionTimeMs = System.currentTimeMillis() - startTime
+            isExecuting = false
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(fileName, maxLines = 1)
-                        Text(
-                            text = if (fileName.endsWith(".kt")) "Kotlin Source" else "Markdown File",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.primary
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
                         )
                     }
                 },
-                navigationIcon = {
-                    TextButton(onClick = onBackClick) {
-                        Text("Back")
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Code,
+                            contentDescription = "Lang",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column {
+                            Text(
+                                text = fileName,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = languageName,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.undo() }) {
-                        Text("Undo")
+                    IconButton(onClick = { showSearchDialog = true }) {
+                        Icon(Icons.Default.Search, contentDescription = "Find & Replace")
                     }
-
-                    TextButton(onClick = { viewModel.redo() }) {
-                        Text("Redo")
+                    IconButton(onClick = { performSave() }) {
+                        Icon(Icons.Default.Save, contentDescription = "Save")
                     }
-
-                    TextButton(onClick = { showSearchDialog = true }) {
-                        Text("Find")
-                    }
-
-                    TextButton(onClick = onHistoryClick) {
-                        Text("History")
-                    }
-
-                    TextButton(onClick = onRunClick) {
-                        Text("Run")
+                    IconButton(onClick = { showSaveAsDialog = true }) {
+                        Icon(Icons.Default.SaveAs, contentDescription = "Save As")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
         bottomBar = {
             EditorStatusBar(
-                languageName = "Kotlin",
+                languageName = languageName,
                 cursorLine = cursorLine,
                 cursorColumn = cursorColumn,
                 lineCount = lineCount
             )
+        },
+        floatingActionButton = {
+            if (!showTerminalSheet) {
+                FloatingActionButton(
+                    onClick = { runCodeExecution() },
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = "Run Code")
+                }
+            }
         }
     ) { innerPadding ->
 
-        CodeEditorArea(
-            value = editorValue,
-            fontSize = fontSize,
-            onValueChange = { newValue ->
-                editorValue = newValue
-                if (!isAutoSaveEnabled && newValue.text != code) {
-                    viewModel.updateCode(newValue.text)
-                }
-            },
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { handleCut() }) {
+                    Icon(Icons.Default.ContentCut, contentDescription = "Cut", modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = { handleCopy() }) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = { handlePaste() }) {
+                    Icon(Icons.Default.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(18.dp))
+                }
+                HorizontalDivider(
+                    modifier = Modifier
+                        .height(16.dp)
+                        .width(1.dp)
+                )
+                IconButton(onClick = { viewModel.undo() }) {
+                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo", modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = { viewModel.redo() }) {
+                    Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo", modifier = Modifier.size(18.dp))
+                }
+            }
+
+            CodeEditorArea(
+                value = editorValue,
+                onValueChange = { newValue ->
+                    editorValue = newValue
+                    if (newValue.text != code) {
+                        viewModel.updateCode(newValue.text)
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+
+    if (showTerminalSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showTerminalSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+            containerColor = Color(0xFF0D1117)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.65f)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Terminal,
+                            contentDescription = "Terminal",
+                            tint = Color(0xFF58A6FF),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "TERMINAL",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFC9D1D9),
+                            fontSize = 14.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        if (isExecuting) {
+                            Surface(
+                                color = Color(0xFF388BFD).copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "RUNNING",
+                                    color = Color(0xFF58A6FF),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        } else if (terminalOutput.contains("ERROR")) {
+                            Surface(
+                                color = Color(0xFFF85149).copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "FAILED",
+                                    color = Color(0xFFF85149),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        } else if (terminalOutput.isNotEmpty()) {
+                            Surface(
+                                color = Color(0xFF3FB950).copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "SUCCESS",
+                                    color = Color(0xFF3FB950),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Row {
+                        IconButton(onClick = {
+                            if (terminalOutput.isNotEmpty()) {
+                                val clip = ClipData.newPlainText("Terminal Output", terminalOutput)
+                                clipboardManager.setPrimaryClip(clip)
+                                Toast.makeText(context, "Copied Output", Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy Output",
+                                tint = Color(0xFF8B949E),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(onClick = { terminalOutput = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteSweep,
+                                contentDescription = "Clear Terminal",
+                                tint = Color(0xFF8B949E),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(onClick = { showTerminalSheet = false }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close Sheet",
+                                tint = Color(0xFF8B949E),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFF21262D), modifier = Modifier.padding(vertical = 6.dp))
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(Color(0xFF161B22), RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    val scrollState = rememberScrollState()
+
+                    if (isExecuting) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF58A6FF)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Compiling and running $fileName...",
+                                color = Color(0xFF8B949E),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 13.sp
+                            )
+                        }
+                    } else if (terminalOutput.isEmpty()) {
+                        Text(
+                            text = "$ $fileName\nProcess started...\nNo output produced.",
+                            color = Color(0xFF8B949E),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp
+                        )
+                    } else {
+                        Column(modifier = Modifier.verticalScroll(scrollState)) {
+                            Text(
+                                text = "$ python $fileName",
+                                color = Color(0xFF58A6FF),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = terminalOutput,
+                                color = if (terminalOutput.contains("ERROR")) Color(0xFFFFA6A1) else Color(0xFFE6EDF3),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp
+                            )
+                            if (executionTimeMs != null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "\n[Process finished in ${executionTimeMs}ms]",
+                                    color = Color(0xFF8B949E),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF161B22), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "stdin >",
+                        color = Color(0xFF8B949E),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    BasicTextField(
+                        value = stdinInput,
+                        onValueChange = { stdinInput = it },
+                        modifier = Modifier.weight(1f),
+                        textStyle = TextStyle(
+                            color = Color(0xFFE6EDF3),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp
+                        ),
+                        singleLine = true,
+                        decorationBox = { innerTextField ->
+                            if (stdinInput.isEmpty()) {
+                                Text(
+                                    text = "Enter input for program...",
+                                    color = Color(0xFF484F58),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp
+                                )
+                            }
+                            innerTextField()
+                        }
+                    )
+                    IconButton(
+                        onClick = { runCodeExecution() },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Send Stdin",
+                            tint = Color(0xFF58A6FF),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showSaveAsDialog) {
+        var newFileName by remember { mutableStateOf(fileName) }
+
+        AlertDialog(
+            onDismissRequest = { showSaveAsDialog = false },
+            title = { Text("Save File As") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newFileName,
+                        onValueChange = { newFileName = it },
+                        label = { Text("File Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newFileName.isNotBlank()) {
+                            fileName = newFileName
+                            languageName = when {
+                                newFileName.endsWith(".py") -> "Python 3"
+                                newFileName.endsWith(".cpp") || newFileName.endsWith(".c") -> "C++"
+                                newFileName.endsWith(".java") -> "Java"
+                                newFileName.endsWith(".kt") -> "Kotlin"
+                                newFileName.endsWith(".js") -> "JavaScript"
+                                else -> "Plain Text"
+                            }
+                            performSave()
+                            showSaveAsDialog = false
+                        }
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveAsDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 
@@ -172,7 +584,6 @@ fun EditorScreen(
 @Composable
 private fun CodeEditorArea(
     value: TextFieldValue,
-    fontSize: Float,
     onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -181,6 +592,8 @@ private fun CodeEditorArea(
 
     val lines = value.text.lines()
     val lineCount = lines.size.coerceAtLeast(1)
+
+    val syntaxTransformation = remember { CodeSyntaxVisualTransformation() }
 
     Surface(
         modifier = modifier,
@@ -203,8 +616,8 @@ private fun CodeEditorArea(
                         text = (index + 1).toString(),
                         color = Color(0xFF6F7785),
                         fontFamily = FontFamily.Monospace,
-                        fontSize = fontSize.sp,
-                        lineHeight = (fontSize * 1.5).sp
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp
                     )
                 }
             }
@@ -220,11 +633,12 @@ private fun CodeEditorArea(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = syntaxTransformation,
                     textStyle = TextStyle(
                         color = Color(0xFFE6EDF3),
                         fontFamily = FontFamily.Monospace,
-                        fontSize = fontSize.sp,
-                        lineHeight = (fontSize * 1.5).sp
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp
                     ),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(
                         MaterialTheme.colorScheme.primary
@@ -236,7 +650,7 @@ private fun CodeEditorArea(
                                     text = "Start writing code here...",
                                     color = Color(0xFF687080),
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = fontSize.sp
+                                    fontSize = 14.sp
                                 )
                             }
                             innerTextField()
@@ -244,6 +658,58 @@ private fun CodeEditorArea(
                     }
                 )
             }
+        }
+    }
+}
+
+// Visual Transformation for Syntax Highlighting
+class CodeSyntaxVisualTransformation : VisualTransformation {
+
+    private val keywordPattern = Pattern.compile(
+        "\\b(def|class|if|else|elif|for|while|return|import|from|as|try|except|finally|raise|with|lambda|yield|async|await|pass|break|continue|global|nonlocal|assert|del|fun|val|var|public|private|protected|class|package|include|using|namespace|int|float|double|char|void|boolean|bool|true|false|null|None|True|False)\\b"
+    )
+
+    private val stringPattern = Pattern.compile("\".*?\"|'.*?'")
+    private val commentPattern = Pattern.compile("#.*|//.*")
+    private val numberPattern = Pattern.compile("\\b\\d+\\b")
+    private val functionPattern = Pattern.compile("\\b[a-zA-Z_][a-zA-Z0-9_]*(?=\\()")
+
+    override fun filter(text: AnnotatedString): TransformedText {
+        val highlighted = buildAnnotatedString {
+            append(text.text)
+
+            // Highlighting Strings
+            highlightPattern(text.text, stringPattern, Color(0xFF98C379))
+
+            // Highlighting Comments
+            highlightPattern(text.text, commentPattern, Color(0xFF5C6370))
+
+            // Highlighting Keywords
+            highlightPattern(text.text, keywordPattern, Color(0xFFC678DD), FontWeight.Bold)
+
+            // Highlighting Functions
+            highlightPattern(text.text, functionPattern, Color(0xFF61AFEF))
+
+            // Highlighting Numbers
+            highlightPattern(text.text, numberPattern, Color(0xFFD19A66))
+        }
+
+        return TransformedText(highlighted, OffsetMapping.Identity)
+    }
+
+    private fun AnnotatedString.Builder.highlightPattern(
+        text: String,
+        pattern: Pattern,
+        color: Color,
+        fontWeight: FontWeight = FontWeight.Normal
+    ) {
+        val matcher = pattern.matcher(text)
+        while (matcher.find()) {
+            addStyle(
+                style = SpanStyle(color = color, fontWeight = fontWeight),
+                start = matcher.start(),
+                end = matcher.end()
+            )
         }
     }
 }
@@ -378,7 +844,7 @@ private fun FindReplaceDialog(
         title = { Text("Find and Replace") },
         text = {
             Column {
-                androidx.compose.material3.OutlinedTextField(
+                OutlinedTextField(
                     value = searchText,
                     onValueChange = {
                         searchText = it
@@ -391,7 +857,7 @@ private fun FindReplaceDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                androidx.compose.material3.OutlinedTextField(
+                OutlinedTextField(
                     value = replacementText,
                     onValueChange = {
                         replacementText = it
