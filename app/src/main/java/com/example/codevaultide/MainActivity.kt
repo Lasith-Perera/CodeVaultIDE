@@ -11,6 +11,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.codevaultide.ui.navigation.AppNavigation
 import com.example.codevaultide.ui.theme.CodeVaultTheme
 import com.example.codevaultide.ui.settings.SettingsViewModel
+<<<<<<< HEAD
+=======
+import com.example.codevaultide.util.CodeTemplates
+>>>>>>> origin/main
 
 class MainActivity : ComponentActivity() {
 

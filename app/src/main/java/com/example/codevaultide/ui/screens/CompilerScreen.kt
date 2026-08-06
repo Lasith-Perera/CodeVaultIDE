@@ -10,7 +10,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+<<<<<<< HEAD
 import androidx.compose.ui.Alignment
+=======
+>>>>>>> origin/main
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -61,8 +64,16 @@ fun CompilerScreen(
                     isCompiling = true
                     output = "> Initializing compiler..."
                     scope.launch {
+<<<<<<< HEAD
                         val result = compilerManager.compileAndRun(code)
                         output = result.second
+=======
+                        val result = compilerManager.compileAndRun(
+                            language = "kotlin",
+                            code = code
+                        )
+                        output = result
+>>>>>>> origin/main
                         isCompiling = false
                     }
                 },
@@ -77,7 +88,11 @@ fun CompilerScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
+<<<<<<< HEAD
                     Icon(Icons.Default.PlayArrow, null)
+=======
+                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+>>>>>>> origin/main
                     Spacer(Modifier.width(8.dp))
                     Text("RUN CODE")
                 }
@@ -101,9 +116,15 @@ fun CompilerScreen(
             ) {
                 Text(
                     text = output,
+<<<<<<< HEAD
                     color = if (output.contains("Error") || output.contains("failed")) 
                         Color(0xFFFFB4AB) 
                     else 
+=======
+                    color = if (output.contains("Error") || output.contains("failed"))
+                        Color(0xFFFFB4AB)
+                    else
+>>>>>>> origin/main
                         Color(0xFFE0E0E0),
                     fontFamily = FontFamily.Monospace,
                     fontSize = 14.sp,
@@ -112,4 +133,8 @@ fun CompilerScreen(
             }
         }
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main
