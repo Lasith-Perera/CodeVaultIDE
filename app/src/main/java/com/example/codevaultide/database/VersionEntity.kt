@@ -10,6 +10,30 @@ import androidx.room.PrimaryKey
     tableName = "versions"
 )
 data class VersionEntity(
+<<<<<<< HEAD
+
+
+    @PrimaryKey(autoGenerate = true)
+    val id:Int = 0,
+
+
+    val fileId:Int,
+
+
+    val versionNumber:Int,
+
+
+    val deltaText:String,
+
+
+    val description:String,
+
+
+    val timestamp:Long
+
+
+)
+=======
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
 
@@ -23,3 +47,4 @@ data class VersionEntity(
 
     val timestamp: Long
 )
+>>>>>>> origin/main

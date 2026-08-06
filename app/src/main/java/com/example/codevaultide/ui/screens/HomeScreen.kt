@@ -1,9 +1,50 @@
 package com.example.codevaultide.ui.screens
 
+<<<<<<< HEAD
+import androidx.compose.foundation.background
+=======
+>>>>>>> origin/main
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+<<<<<<< HEAD
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+
+data class RecentFile(
+    val name: String,
+    val type: String,
+    val time: String,
+    val versions: Int
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(
+    onNewFileClick: () -> Unit = {},
+    onOpenFileClick: () -> Unit = {},
+    onRunClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+    onRecentFileClick: (RecentFile) -> Unit = {}
+) {
+    val recentFiles = listOf(
+        RecentFile("Main.kt", "Kotlin Source", "2 mins ago", 12),
+        RecentFile("build.gradle.kts", "Gradle Script", "1 hour ago", 5),
+        RecentFile("FileManager.kt", "Kotlin Source", "Yesterday", 8)
+    )
+=======
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -137,11 +178,15 @@ fun HomeScreen(
             }
         )
     }
+>>>>>>> origin/main
 
     Scaffold(
         topBar = {
             TopAppBar(
+<<<<<<< HEAD
+=======
                 windowInsets = WindowInsets(0, 0, 0, 0),
+>>>>>>> origin/main
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -174,14 +219,21 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
+<<<<<<< HEAD
+                Spacer(modifier = Modifier.height(8.dp))
+=======
                 Spacer(modifier = Modifier.height(16.dp))
+>>>>>>> origin/main
                 Text(
                     text = "Welcome Back",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.ExtraBold
                     )
                 )
+<<<<<<< HEAD
+=======
                 Spacer(modifier = Modifier.height(4.dp))
+>>>>>>> origin/main
                 Text(
                     text = "Local version control & professional editing",
                     style = MaterialTheme.typography.bodyMedium,
@@ -193,9 +245,15 @@ fun HomeScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     ActionCard(
                         title = "Create New File",
+<<<<<<< HEAD
+                        description = "Start a fresh Kotlin or Markdown project",
+                        icon = Icons.Default.Add,
+                        onClick = onNewFileClick
+=======
                         description = "Start a fresh code project with standard compilers",
                         icon = Icons.Default.Add,
                         onClick = { showNewFileDialog = true }
+>>>>>>> origin/main
                     )
                     ActionCard(
                         title = "Open Existing File",
@@ -206,6 +264,29 @@ fun HomeScreen(
                 }
             }
 
+<<<<<<< HEAD
+            item {
+                Text(
+                    text = "Quick Actions",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickButton(
+                        modifier = Modifier.weight(1f),
+                        text = "Run Code",
+                        icon = Icons.Default.PlayArrow,
+                        click = onRunClick
+                    )
+                    QuickButton(
+                        modifier = Modifier.weight(1f),
+                        text = "History",
+                        icon = Icons.Default.History,
+                        click = onHistoryClick
+=======
             if (recentFiles.isNotEmpty()) {
                 item {
                     Text(
@@ -218,15 +299,35 @@ fun HomeScreen(
                     RecentFileCard(
                         file = file,
                         onClick = { onRecentFileClick(file) }
+>>>>>>> origin/main
                     )
                 }
             }
 
             item {
+<<<<<<< HEAD
+                Text(
+                    text = "Recent Files",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+
+            items(recentFiles) { file ->
+                RecentFileCard(
+                    file = file,
+                    onClick = { onRecentFileClick(file) }
+                )
+            }
+            
+            item {
+=======
+>>>>>>> origin/main
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
+<<<<<<< HEAD
+=======
 
     if (showAiSheet) {
         ModalBottomSheet(
@@ -323,6 +424,7 @@ fun AiAssistantSheetContent(onClose: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
     }
+>>>>>>> origin/main
 }
 
 @Composable
@@ -373,6 +475,30 @@ fun ActionCard(
 }
 
 @Composable
+<<<<<<< HEAD
+fun QuickButton(
+    modifier: Modifier = Modifier,
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    click: () -> Unit
+) {
+    ElevatedButton(
+        onClick = click,
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Icon(icon, null)
+        Spacer(Modifier.width(8.dp))
+        Text(text)
+    }
+}
+
+@Composable
+fun RecentFileCard(
+    file: RecentFile,
+    onClick: () -> Unit = {}
+) {
+=======
 fun RecentFileCard(
     file: FileEntity,
     onClick: () -> Unit = {}
@@ -394,6 +520,7 @@ fun RecentFileCard(
         else -> "Source File"
     }
 
+>>>>>>> origin/main
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -403,7 +530,11 @@ fun RecentFileCard(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         border = androidx.compose.foundation.BorderStroke(
+<<<<<<< HEAD
+            1.dp, 
+=======
             1.dp,
+>>>>>>> origin/main
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
     ) {
@@ -423,11 +554,32 @@ fun RecentFileCard(
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                 )
                 Text(
+<<<<<<< HEAD
+                    "${file.type} • ${file.time}",
+=======
                     "$fileType • $formattedDate",
+>>>>>>> origin/main
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+<<<<<<< HEAD
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Text(
+                    text = "v${file.versions}",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
         }
     }
 }
+=======
+        }
+    }
+}
+>>>>>>> origin/main

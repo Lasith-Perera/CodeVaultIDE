@@ -1,5 +1,14 @@
 package com.example.codevaultide.database
 
+<<<<<<< HEAD
+import androidx.room.Database
+import androidx.room.RoomDatabase
+
+@Database(entities = [FileEntity::class, VersionEntity::class], version = 1)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun fileDao(): FileDao
+    abstract fun versionDao(): VersionDao
+=======
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
@@ -27,4 +36,5 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
     }
+>>>>>>> origin/main
 }

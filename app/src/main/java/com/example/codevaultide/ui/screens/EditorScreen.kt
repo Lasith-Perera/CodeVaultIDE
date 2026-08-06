@@ -1,5 +1,45 @@
 package com.example.codevaultide.ui.screens
 
+<<<<<<< HEAD
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.codevaultide.editor.EditorViewModel
+
+import com.example.codevaultide.ui.settings.SettingsViewModel
+=======
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -54,11 +94,28 @@ import com.example.codevaultide.editor.EditorViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
+>>>>>>> origin/main
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(
     viewModel: EditorViewModel,
+<<<<<<< HEAD
+    settingsViewModel: SettingsViewModel,
+    onBackClick: () -> Unit,
+    onRunClick: () -> Unit,
+    onHistoryClick: () -> Unit
+) {
+    val code by viewModel.code.collectAsState()
+    val fontSize by settingsViewModel.fontSize.collectAsState()
+    val isAutoSaveEnabled by settingsViewModel.isAutoSaveEnabled.collectAsState()
+    
+    var editorValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = code,
+                selection = TextRange(code.length)
+=======
     fileViewModel: com.example.codevaultide.editor.FileViewModel,
     settingsViewModel: com.example.codevaultide.ui.settings.SettingsViewModel,
     onBackClick: () -> Unit,
@@ -94,11 +151,16 @@ fun EditorScreen(
             TextFieldValue(
                 text = initialCode,
                 selection = TextRange(initialCode.length)
+>>>>>>> origin/main
             )
         )
     }
 
     var showSearchDialog by remember { mutableStateOf(false) }
+<<<<<<< HEAD
+
+    // Sync from ViewModel if needed (e.g. after rollback)
+=======
     var showSaveAsDialog by remember { mutableStateOf(false) }
     var showTerminalSheet by remember { mutableStateOf(value = false) }
     var terminalOutput by remember { mutableStateOf("") }
@@ -106,18 +168,74 @@ fun EditorScreen(
     var isExecuting by remember { mutableStateOf(false) }
     var executionTimeMs by remember { mutableStateOf<Long?>(null) }
 
+>>>>>>> origin/main
     LaunchedEffect(code) {
         if (code != editorValue.text) {
             editorValue = editorValue.copy(text = code)
         }
     }
 
+<<<<<<< HEAD
+    // Auto Save Logic
+    LaunchedEffect(editorValue.text) {
+        if (isAutoSaveEnabled && editorValue.text != code) {
+            // In a real app, we might want to debounce this
+            viewModel.updateCode(editorValue.text)
+        }
+    }
+
+=======
+>>>>>>> origin/main
     val lineCount = editorValue.text.lines().size.coerceAtLeast(1)
     val cursorPosition = editorValue.selection.start.coerceIn(0, editorValue.text.length)
     val textBeforeCursor = editorValue.text.take(cursorPosition)
     val cursorLine = textBeforeCursor.count { it == '\n' } + 1
     val cursorColumn = textBeforeCursor.substringAfterLast('\n').length + 1
 
+<<<<<<< HEAD
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Main.kt", maxLines = 1)
+                        Text(
+                            text = "Kotlin Source",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                navigationIcon = {
+                    TextButton(onClick = onBackClick) {
+                        Text("Back")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = { viewModel.undo() }) {
+                        Text("Undo")
+                    }
+
+                    TextButton(onClick = { viewModel.redo() }) {
+                        Text("Redo")
+                    }
+
+                    TextButton(onClick = { showSearchDialog = true }) {
+                        Text("Find")
+                    }
+
+                    TextButton(onClick = onHistoryClick) {
+                        Text("History")
+                    }
+
+                    TextButton(onClick = onRunClick) {
+                        Text("Run")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+=======
     fun handleCopy() {
         val selectedText = if (editorValue.selection.collapsed) {
             editorValue.text
@@ -282,16 +400,38 @@ fun EditorScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
+>>>>>>> origin/main
                 )
             )
         },
         bottomBar = {
             EditorStatusBar(
+<<<<<<< HEAD
+                languageName = "Kotlin",
+=======
                 languageName = languageName,
+>>>>>>> origin/main
                 cursorLine = cursorLine,
                 cursorColumn = cursorColumn,
                 lineCount = lineCount
             )
+<<<<<<< HEAD
+        }
+    ) { innerPadding ->
+
+        CodeEditorArea(
+            value = editorValue,
+            fontSize = fontSize,
+            onValueChange = { newValue ->
+                editorValue = newValue
+                if (!isAutoSaveEnabled && newValue.text != code) {
+                    viewModel.updateCode(newValue.text)
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+=======
         },
         floatingActionButton = {
             if (!showTerminalSheet) {
@@ -652,6 +792,7 @@ fun EditorScreen(
                     Text("Cancel")
                 }
             }
+>>>>>>> origin/main
         )
     }
 
@@ -672,9 +813,15 @@ fun EditorScreen(
 @Composable
 private fun CodeEditorArea(
     value: TextFieldValue,
+<<<<<<< HEAD
+    fontSize: Float,
+    onValueChange: (TextFieldValue) -> Unit,
+    modifier: Modifier = Modifier
+=======
     onValueChange: (TextFieldValue) -> Unit,
     fontSize: Float,
     modifier: Modifier = Modifier,
+>>>>>>> origin/main
 ) {
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
@@ -682,10 +829,13 @@ private fun CodeEditorArea(
     val lines = value.text.lines()
     val lineCount = lines.size.coerceAtLeast(1)
 
+<<<<<<< HEAD
+=======
     val syntaxTransformation = remember { CodeSyntaxVisualTransformation() }
     val editorFontSize = fontSize.sp
     val editorLineHeight = (fontSize * 1.5f).sp
 
+>>>>>>> origin/main
     Surface(
         modifier = modifier,
         color = Color(0xFF10131A)
@@ -707,8 +857,13 @@ private fun CodeEditorArea(
                         text = (index + 1).toString(),
                         color = Color(0xFF6F7785),
                         fontFamily = FontFamily.Monospace,
+<<<<<<< HEAD
+                        fontSize = fontSize.sp,
+                        lineHeight = (fontSize * 1.5).sp
+=======
                         fontSize = editorFontSize,
                         lineHeight = editorLineHeight
+>>>>>>> origin/main
                     )
                 }
             }
@@ -724,12 +879,20 @@ private fun CodeEditorArea(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
+<<<<<<< HEAD
+                    textStyle = TextStyle(
+                        color = Color(0xFFE6EDF3),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = fontSize.sp,
+                        lineHeight = (fontSize * 1.5).sp
+=======
                     visualTransformation = syntaxTransformation,
                     textStyle = TextStyle(
                         color = Color(0xFFE6EDF3),
                         fontFamily = FontFamily.Monospace,
                         fontSize = editorFontSize,
                         lineHeight = editorLineHeight
+>>>>>>> origin/main
                     ),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(
                         MaterialTheme.colorScheme.primary
@@ -741,7 +904,11 @@ private fun CodeEditorArea(
                                     text = "Start writing code here...",
                                     color = Color(0xFF687080),
                                     fontFamily = FontFamily.Monospace,
+<<<<<<< HEAD
+                                    fontSize = fontSize.sp
+=======
                                     fontSize = editorFontSize
+>>>>>>> origin/main
                                 )
                             }
                             innerTextField()
@@ -753,6 +920,8 @@ private fun CodeEditorArea(
     }
 }
 
+<<<<<<< HEAD
+=======
 class CodeSyntaxVisualTransformation : VisualTransformation {
 
     private val keywordPattern = Pattern.compile(
@@ -795,6 +964,7 @@ class CodeSyntaxVisualTransformation : VisualTransformation {
     }
 }
 
+>>>>>>> origin/main
 @Composable
 private fun EditorStatusBar(
     languageName: String,
@@ -925,7 +1095,11 @@ private fun FindReplaceDialog(
         title = { Text("Find and Replace") },
         text = {
             Column {
+<<<<<<< HEAD
+                androidx.compose.material3.OutlinedTextField(
+=======
                 OutlinedTextField(
+>>>>>>> origin/main
                     value = searchText,
                     onValueChange = {
                         searchText = it
@@ -938,7 +1112,11 @@ private fun FindReplaceDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
+<<<<<<< HEAD
+                androidx.compose.material3.OutlinedTextField(
+=======
                 OutlinedTextField(
+>>>>>>> origin/main
                     value = replacementText,
                     onValueChange = {
                         replacementText = it
@@ -979,4 +1157,8 @@ private fun FindReplaceDialog(
             }
         }
     )
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main
