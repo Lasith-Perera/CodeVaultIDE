@@ -1,30 +1,21 @@
 package com.example.codevaultide.ui.screens
 
-<<<<<<< HEAD
-
-import androidx.compose.foundation.layout.*
-=======
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
->>>>>>> origin/main
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.painterResource
 import com.example.codevaultide.R
 import com.example.codevaultide.ui.settings.SettingsViewModel
 
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -39,10 +30,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-<<<<<<< HEAD
-=======
                 windowInsets = WindowInsets(0, 0, 0, 0),
->>>>>>> origin/main
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -68,16 +56,10 @@ fun SettingsScreen(
     ) { padding ->
         Column(
             modifier = Modifier
-<<<<<<< HEAD
-                .padding(padding)
-                .padding(16.dp)
-                .fillMaxSize(),
-=======
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 12.dp),
->>>>>>> origin/main
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
