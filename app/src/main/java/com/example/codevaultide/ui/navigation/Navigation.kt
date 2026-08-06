@@ -16,7 +16,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+
 import com.example.codevaultide.editor.EditorViewModel
+import com.example.codevaultide.editor.FileViewModel
 import com.example.codevaultide.ui.screens.*
 import com.example.codevaultide.ui.settings.SettingsViewModel
 
@@ -30,7 +32,10 @@ object Routes {
 }
 
 @Composable
-fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()) {
+fun AppNavigation(
+    settingsViewModel: SettingsViewModel = viewModel(),
+    fileViewModel: FileViewModel = viewModel()
+) {
     val navController = rememberNavController()
     val editorViewModel: EditorViewModel = viewModel()
 
@@ -108,12 +113,19 @@ fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()) {
         ) {
             composable(Routes.HOME) {
                 HomeScreen(
-                    onNewFileClick = { navController.navigate(Routes.EDITOR) },
+                    fileViewModel = fileViewModel,
+                    onNewFileClick = { fileName ->
+                        fileViewModel.createNewFile(fileName, "")
+                        editorViewModel.setFileName(fileName)
+                        editorViewModel.setCode("// New File: $fileName\n\nfun main() {\n    println(\"Hello World\")\n}")
+                        navController.navigate(Routes.EDITOR)
+                    },
                     onOpenFileClick = { navController.navigate(Routes.FILES) },
                     onHistoryClick = { navController.navigate(Routes.HISTORY) },
                     onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                     onRecentFileClick = { file ->
-                        editorViewModel.setCode("// Content for ${file.name}\n\nfun main() {\n    println(\"Opening ${file.name}\")\n}")
+                        editorViewModel.setFileName(file.name)
+                        editorViewModel.setCode(file.content)
                         navController.navigate(Routes.EDITOR)
                     }
                 )
@@ -132,7 +144,7 @@ fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()) {
                 HistoryScreen(
                     editorViewModel = editorViewModel,
                     onBackClick = { navController.popBackStack() },
-                    onCompareClick = { /* Diff screen implementation */ }
+                    onCompareClick = { /* Diff view */ }
                 )
             }
 
@@ -140,7 +152,8 @@ fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()) {
                 FilesScreen(
                     onBackClick = { navController.popBackStack() },
                     onFileClick = { navController.navigate(Routes.EDITOR) },
-                    editorViewModel = editorViewModel
+                    editorViewModel = editorViewModel,
+                    fileViewModel = fileViewModel
                 )
             }
 

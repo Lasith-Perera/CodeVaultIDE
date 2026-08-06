@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
@@ -26,7 +27,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SaveAs
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -62,6 +62,8 @@ fun EditorScreen(
     onHistoryClick: () -> Unit = {}
 ) {
     val code by viewModel.code.collectAsState()
+    val activeFileName by viewModel.fileName.collectAsState()
+
     val compilerManager = remember { CompilerManager() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -69,8 +71,16 @@ fun EditorScreen(
         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
 
-    var fileName by remember { mutableStateOf("Main.py") }
-    var languageName by remember { mutableStateOf("Python 3") }
+    val languageName = remember(activeFileName) {
+        when {
+            activeFileName.endsWith(".py") -> "Python 3"
+            activeFileName.endsWith(".cpp") || activeFileName.endsWith(".c") -> "C++"
+            activeFileName.endsWith(".java") -> "Java"
+            activeFileName.endsWith(".kt") -> "Kotlin"
+            activeFileName.endsWith(".js") -> "JavaScript"
+            else -> "Plain Text"
+        }
+    }
 
     var editorValue by remember {
         mutableStateOf(
@@ -81,7 +91,6 @@ fun EditorScreen(
         )
     }
 
-    // States
     var showSearchDialog by remember { mutableStateOf(false) }
     var showSaveAsDialog by remember { mutableStateOf(false) }
     var showTerminalSheet by remember { mutableStateOf(false) }
@@ -148,7 +157,35 @@ fun EditorScreen(
 
     fun performSave() {
         viewModel.updateCode(editorValue.text)
-        Toast.makeText(context, "$fileName saved successfully!", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "$activeFileName saved successfully!", Toast.LENGTH_SHORT).show()
+    }
+
+    fun formatInteractiveTerminalOutput(rawOutput: String, stdin: String): String {
+        if (stdin.isBlank() || rawOutput.contains("ERROR")) return rawOutput
+
+        val inputLines = stdin.lines().filter { it.isNotBlank() }
+        if (inputLines.isEmpty()) return rawOutput
+
+        val promptRegex = Regex("""([a-zA-Z0-9_\s]*[:?]\s*)""")
+        val matches = promptRegex.findAll(rawOutput).toList()
+
+        if (matches.isNotEmpty()) {
+            val sb = StringBuilder()
+            var lastIndex = 0
+            matches.forEachIndexed { index, match ->
+                if (index < inputLines.size) {
+                    sb.append(rawOutput.substring(lastIndex, match.range.last + 1))
+                    sb.append(inputLines[index]).append("\n")
+                    lastIndex = match.range.last + 1
+                }
+            }
+            if (lastIndex < rawOutput.length) {
+                sb.append(rawOutput.substring(lastIndex))
+            }
+            return sb.toString().trim()
+        }
+
+        return rawOutput
     }
 
     fun runCodeExecution() {
@@ -158,12 +195,12 @@ fun EditorScreen(
         val startTime = System.currentTimeMillis()
 
         scope.launch {
-            val result = compilerManager.compileAndRun(
-                language = if (fileName.endsWith(".py")) "python" else "cpp",
+            val rawResult = compilerManager.compileAndRun(
+                language = if (activeFileName.endsWith(".py")) "python" else "cpp",
                 code = editorValue.text,
                 stdin = stdinInput
             )
-            terminalOutput = result
+            terminalOutput = formatInteractiveTerminalOutput(rawResult, stdinInput)
             executionTimeMs = System.currentTimeMillis() - startTime
             isExecuting = false
         }
@@ -192,7 +229,7 @@ fun EditorScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Column {
                             Text(
-                                text = fileName,
+                                text = activeFileName,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
@@ -232,14 +269,34 @@ fun EditorScreen(
         },
         floatingActionButton = {
             if (!showTerminalSheet) {
-                FloatingActionButton(
-                    onClick = { runCodeExecution() },
-                    shape = CircleShape,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = "Run Code")
+                    SmallFloatingActionButton(
+                        onClick = { showTerminalSheet = true },
+                        shape = CircleShape,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Terminal,
+                            contentDescription = "Open Terminal & Inputs"
+                        )
+                    }
+
+                    FloatingActionButton(
+                        onClick = { runCodeExecution() },
+                        shape = CircleShape,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Run Code"
+                        )
+                    }
                 }
             }
         }
@@ -296,14 +353,15 @@ fun EditorScreen(
     if (showTerminalSheet) {
         ModalBottomSheet(
             onDismissRequest = { showTerminalSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = Color(0xFF0D1117)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.65f)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxHeight(0.45f) // Reduced height from 0.75f to 0.45f
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -340,7 +398,7 @@ fun EditorScreen(
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
-                        } else if (terminalOutput.contains("ERROR")) {
+                        } else if (terminalOutput.contains("ERROR") || terminalOutput.contains("EOFError")) {
                             Surface(
                                 color = Color(0xFFF85149).copy(alpha = 0.2f),
                                 shape = RoundedCornerShape(4.dp)
@@ -410,7 +468,7 @@ fun EditorScreen(
                         .weight(1f)
                         .fillMaxWidth()
                         .background(Color(0xFF161B22), RoundedCornerShape(8.dp))
-                        .padding(12.dp)
+                        .padding(10.dp)
                 ) {
                     val scrollState = rememberScrollState()
 
@@ -423,50 +481,50 @@ fun EditorScreen(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "Compiling and running $fileName...",
+                                text = "Compiling and running $activeFileName...",
                                 color = Color(0xFF8B949E),
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp
+                                fontSize = 12.sp
                             )
                         }
                     } else if (terminalOutput.isEmpty()) {
                         Text(
-                            text = "$ $fileName\nProcess started...\nNo output produced.",
+                            text = "$ $activeFileName\nProcess started...\nEnter inputs below and tap send.",
                             color = Color(0xFF8B949E),
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         )
                     } else {
                         Column(modifier = Modifier.verticalScroll(scrollState)) {
                             Text(
-                                text = "$ python $fileName",
+                                text = "$ python $activeFileName",
                                 color = Color(0xFF58A6FF),
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = terminalOutput,
-                                color = if (terminalOutput.contains("ERROR")) Color(0xFFFFA6A1) else Color(0xFFE6EDF3),
+                                color = if (terminalOutput.contains("ERROR") || terminalOutput.contains("EOFError")) Color(0xFFFFA6A1) else Color(0xFFE6EDF3),
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
-                                lineHeight = 20.sp
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp
                             )
                             if (executionTimeMs != null) {
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "\n[Process finished in ${executionTimeMs}ms]",
                                     color = Color(0xFF8B949E),
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp
+                                    fontSize = 10.sp
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Row(
                     modifier = Modifier
@@ -477,7 +535,7 @@ fun EditorScreen(
                 ) {
                     Text(
                         text = "stdin >",
-                        color = Color(0xFF8B949E),
+                        color = Color(0xFF58A6FF),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -490,16 +548,17 @@ fun EditorScreen(
                         textStyle = TextStyle(
                             color = Color(0xFFE6EDF3),
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         ),
-                        singleLine = true,
+                        singleLine = false,
+                        maxLines = 2,
                         decorationBox = { innerTextField ->
                             if (stdinInput.isEmpty()) {
                                 Text(
-                                    text = "Enter input for program...",
+                                    text = "Enter inputs (e.g. 21)...",
                                     color = Color(0xFF484F58),
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 13.sp
+                                    fontSize = 12.sp
                                 )
                             }
                             innerTextField()
@@ -510,7 +569,7 @@ fun EditorScreen(
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Send,
+                            imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send Stdin",
                             tint = Color(0xFF58A6FF),
                             modifier = Modifier.size(16.dp)
@@ -522,7 +581,7 @@ fun EditorScreen(
     }
 
     if (showSaveAsDialog) {
-        var newFileName by remember { mutableStateOf(fileName) }
+        var newFileNameInput by remember { mutableStateOf(activeFileName) }
 
         AlertDialog(
             onDismissRequest = { showSaveAsDialog = false },
@@ -530,8 +589,8 @@ fun EditorScreen(
             text = {
                 Column {
                     OutlinedTextField(
-                        value = newFileName,
-                        onValueChange = { newFileName = it },
+                        value = newFileNameInput,
+                        onValueChange = { newFileNameInput = it },
                         label = { Text("File Name") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -541,16 +600,8 @@ fun EditorScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (newFileName.isNotBlank()) {
-                            fileName = newFileName
-                            languageName = when {
-                                newFileName.endsWith(".py") -> "Python 3"
-                                newFileName.endsWith(".cpp") || newFileName.endsWith(".c") -> "C++"
-                                newFileName.endsWith(".java") -> "Java"
-                                newFileName.endsWith(".kt") -> "Kotlin"
-                                newFileName.endsWith(".js") -> "JavaScript"
-                                else -> "Plain Text"
-                            }
+                        if (newFileNameInput.isNotBlank()) {
+                            viewModel.setFileName(newFileNameInput)
                             performSave()
                             showSaveAsDialog = false
                         }
@@ -662,7 +713,6 @@ private fun CodeEditorArea(
     }
 }
 
-// Visual Transformation for Syntax Highlighting
 class CodeSyntaxVisualTransformation : VisualTransformation {
 
     private val keywordPattern = Pattern.compile(
@@ -678,19 +728,10 @@ class CodeSyntaxVisualTransformation : VisualTransformation {
         val highlighted = buildAnnotatedString {
             append(text.text)
 
-            // Highlighting Strings
             highlightPattern(text.text, stringPattern, Color(0xFF98C379))
-
-            // Highlighting Comments
             highlightPattern(text.text, commentPattern, Color(0xFF5C6370))
-
-            // Highlighting Keywords
             highlightPattern(text.text, keywordPattern, Color(0xFFC678DD), FontWeight.Bold)
-
-            // Highlighting Functions
             highlightPattern(text.text, functionPattern, Color(0xFF61AFEF))
-
-            // Highlighting Numbers
             highlightPattern(text.text, numberPattern, Color(0xFFD19A66))
         }
 
