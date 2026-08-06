@@ -48,13 +48,10 @@ android {
     buildFeatures {
         compose = true
     }
-<<<<<<< HEAD
-=======
 
     ksp {
         arg("room.generateKotlin", "true")
     }
->>>>>>> origin/main
 }
 
 dependencies {
@@ -81,12 +78,8 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-<<<<<<< HEAD
-=======
     // OkHttp library for Piston API calls
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
->>>>>>> origin/main
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

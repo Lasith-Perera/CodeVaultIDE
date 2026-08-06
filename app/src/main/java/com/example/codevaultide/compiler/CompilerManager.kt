@@ -1,48 +1,5 @@
 package com.example.codevaultide.compiler
 
-<<<<<<< HEAD
-import kotlinx.coroutines.delay
-
-/**
- * Simulates a Kotlin compiler service.
- */
-class CompilerManager {
-
-    /**
-     * Simulates compiling the given [code].
-     * Returns a pair of (IsSuccess, OutputMessage)
-     */
-    suspend fun compileAndRun(code: String): Pair<Boolean, String> {
-        // Simulate network/process delay
-        delay(1500)
-
-        return when {
-            code.isBlank() -> {
-                false to "Error: No code provided to the compiler."
-            }
-            code.contains("fun main()") -> {
-                true to """
-                    > Starting compilation...
-                    > Successfully compiled Main.kt
-                    > Running...
-                    
-                    Hello from CodeVault IDE!
-                    
-                    Process finished with exit code 0
-                """.trimIndent()
-            }
-            else -> {
-                false to """
-                    > Starting compilation...
-                    e: Main.kt: (1, 1): Expecting a 'fun main()' entry point.
-                    
-                    Compilation failed with 1 error
-                """.trimIndent()
-            }
-        }
-    }
-}
-=======
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -72,12 +29,12 @@ class CompilerManager {
         language: String,
         code: String,
         stdin: String = ""
-    ): String = withContext(Dispatchers.IO) {
+    ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
 
         val languageId = languageToId(language)
 
         if (languageId == -1)
-            return@withContext "Unsupported language: $language"
+            return@withContext false to "Unsupported language: $language"
 
         try {
             // Encode Base64 to prevent null/character escaping issues
@@ -104,10 +61,10 @@ class CompilerManager {
                 .execute()
                 .use { response ->
                     if (!response.isSuccessful)
-                        return@withContext "Submission failed (${response.code} ${response.message})"
+                        return@withContext false to "Submission failed (${response.code} ${response.message})"
 
                     val responseString = response.body?.string() ?: ""
-                    if (responseString.isEmpty()) return@withContext "Empty response from compiler server."
+                    if (responseString.isEmpty()) return@withContext false to "Empty response from compiler server."
 
                     val json = JSONObject(responseString)
                     json.getString("token")
@@ -128,7 +85,7 @@ class CompilerManager {
 
                 response.use { res ->
                     if (!res.isSuccessful)
-                        return@withContext "Polling failed (${res.code} ${res.message})"
+                        return@withContext false to "Polling failed (${res.code} ${res.message})"
 
                     val json = JSONObject(res.body!!.string())
                     val status = json.getJSONObject("status")
@@ -145,21 +102,21 @@ class CompilerManager {
                             val message = decodeBase64(json.optString("message", ""))
 
                             return@withContext when {
-                                compileOutput.isNotBlank() -> "COMPILE ERROR:\n$compileOutput"
-                                stderr.isNotBlank() -> "RUNTIME ERROR:\n$stderr"
-                                stdout.isNotBlank() -> stdout
-                                message.isNotBlank() -> message
-                                else -> "Program finished successfully with no output."
+                                compileOutput.isNotBlank() -> false to "COMPILE ERROR:\n$compileOutput"
+                                stderr.isNotBlank() -> false to "RUNTIME ERROR:\n$stderr"
+                                stdout.isNotBlank() -> true to stdout
+                                message.isNotBlank() -> false to message
+                                else -> true to "Program finished successfully with no output."
                             }
                         }
                     }
                 }
             }
 
-            "Execution timeout."
+            false to "Execution timeout."
 
         } catch (e: Exception) {
-            "Error: ${e.localizedMessage ?: "Unknown network/execution error"}"
+            false to "Error: ${e.localizedMessage ?: "Unknown network/execution error"}"
         }
     }
 
@@ -191,4 +148,3 @@ class CompilerManager {
         }
     }
 }
->>>>>>> origin/main
