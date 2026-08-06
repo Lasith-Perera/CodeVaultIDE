@@ -10,8 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.codevaultide.ai.GeminiAgentManager
 import com.example.codevaultide.ui.settings.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -24,6 +26,8 @@ fun SettingsScreen(
     val fontSize by settingsViewModel.fontSize.collectAsState()
     val isAutoSaveEnabled by settingsViewModel.isAutoSaveEnabled.collectAsState()
     val isVersionBackupEnabled by settingsViewModel.isVersionBackupEnabled.collectAsState()
+
+    var apiKeyInput by remember { mutableStateOf(GeminiAgentManager.apiKey) }
 
     Scaffold(
         topBar = {
@@ -51,6 +55,25 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            // Gemini API Key Setting
+            Column {
+                Text("Gemini API Key", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = apiKeyInput,
+                    onValueChange = {
+                        apiKeyInput = it
+                        GeminiAgentManager.apiKey = it.trim()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Paste Google AI Studio API Key") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation()
+                )
+            }
+
+            HorizontalDivider()
 
             // Theme Setting
             Row(

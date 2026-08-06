@@ -1,5 +1,9 @@
 package com.example.codevaultide.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,13 +18,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.codevaultide.ai.GeminiAgentManager
 import com.example.codevaultide.database.FileEntity
+import com.example.codevaultide.editor.EditorViewModel
 import com.example.codevaultide.editor.FileViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -28,6 +37,8 @@ fun HomeScreen(
     fileViewModel: FileViewModel,
     onNewFileClick: (String) -> Unit = {},
     onOpenFileClick: () -> Unit = {},
+    onRunClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onRecentFileClick: (FileEntity) -> Unit = {}
 ) {
@@ -35,7 +46,6 @@ fun HomeScreen(
     var showAiSheet by remember { mutableStateOf(false) }
     var newFileName by remember { mutableStateOf("") }
 
-    // List of supported file extensions
     val supportedExtensions = remember {
         listOf(
             ".c", ".cpp", ".java", ".py", ".js", ".ts",
@@ -141,7 +151,6 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -159,6 +168,9 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showAiSheet = true }) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = "AI Assistant")
+                    }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
@@ -206,6 +218,31 @@ fun HomeScreen(
                 }
             }
 
+            item {
+                Text(
+                    text = "Quick Actions",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickButton(
+                        modifier = Modifier.weight(1f),
+                        text = "Run Code",
+                        icon = Icons.Default.PlayArrow,
+                        click = onRunClick
+                    )
+                    QuickButton(
+                        modifier = Modifier.weight(1f),
+                        text = "History",
+                        icon = Icons.Default.History,
+                        click = onHistoryClick
+                    )
+                }
+            }
+
             if (recentFiles.isNotEmpty()) {
                 item {
                     Text(
@@ -231,23 +268,79 @@ fun HomeScreen(
     if (showAiSheet) {
         ModalBottomSheet(
             onDismissRequest = { showAiSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
-            AiAssistantSheetContent(onClose = { showAiSheet = false })
+            AiAssistantSheetContent(
+                onClose = { showAiSheet = false }
+            )
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AiAssistantSheetContent(onClose: () -> Unit) {
+fun AiAssistantSheetContent(
+    editorViewModel: EditorViewModel? = null,
+    fileViewModel: FileViewModel? = null,
+    onClose: () -> Unit = {},
+    onOpenInEditor: (fileName: String, code: String) -> Unit = { _, _ -> }
+) {
+    val context = LocalContext.current
+    val currentCode = editorViewModel?.code?.collectAsState()?.value ?: ""
+    val activeFileName = editorViewModel?.fileName?.collectAsState()?.value ?: "Main.kt"
+
     var queryText by remember { mutableStateOf("") }
-    var aiResponse by remember { mutableStateOf("How can I help you with your code today?") }
+    var aiResponse by remember { mutableStateOf("How can I help you fix or generate code today?") }
+
+    var isLoading by remember { mutableStateOf(false) }
+    var currentStatus by remember { mutableStateOf("Idle") }
+
+    val coroutineScope = rememberCoroutineScope()
+    var activeJob by remember { mutableStateOf<Job?>(null) }
+    val responseScrollState = rememberScrollState()
+
+    // Auto-scroll response container as AI streams tokens
+    LaunchedEffect(aiResponse) {
+        responseScrollState.animateScrollTo(responseScrollState.maxValue)
+    }
+
+    val executeAiTask: (String, String) -> Unit = { actionType, prompt ->
+        queryText = ""
+        isLoading = true
+        aiResponse = ""
+        currentStatus = "Connecting to Gemini..."
+
+        activeJob = coroutineScope.launch {
+            try {
+                if (GeminiAgentManager.apiKey.isBlank()) {
+                    aiResponse = "Gemini API key is not configured. Please add your key in Settings."
+                } else {
+                    currentStatus = "Streaming response..."
+                    val fullPrompt = if (actionType == "FIX") "Fix all bugs and compile errors in $activeFileName" else prompt
+
+                    GeminiAgentManager.generateCodeResponseStream(fullPrompt, currentCode)
+                        .collect { chunk ->
+                            aiResponse += chunk.text ?: ""
+                        }
+                }
+            } catch (e: Exception) {
+                aiResponse = "Error: ${e.localizedMessage ?: "Failed to generate AI response."}"
+            } finally {
+                isLoading = false
+                currentStatus = "Idle"
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(20.dp)
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 16.dp)
     ) {
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -261,7 +354,7 @@ fun AiAssistantSheetContent(onClose: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "CodeVault AI Assistant",
+                    text = "Code Fix & Generator Agent",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
@@ -270,27 +363,146 @@ fun AiAssistantSheetContent(onClose: () -> Unit) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Surface(
+        // Middle Scrollable Section
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = aiResponse,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AssistChip(
+                    onClick = { executeAiTask("FIX", "Fix current file bugs") },
+                    label = { Text("Fix Active File") },
+                    leadingIcon = { Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    enabled = !isLoading
+                )
+                AssistChip(
+                    onClick = { executeAiTask("GENERATE", "generateFunction") },
+                    label = { Text("Generate Code") },
+                    leadingIcon = { Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    enabled = !isLoading
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (isLoading) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = currentStatus,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .padding(bottom = 8.dp)
+                )
+            }
+
+            Box(
                 modifier = Modifier
-                    .padding(12.dp)
-                    .verticalScroll(rememberScrollState()),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp, max = 160.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ) {
+                    Text(
+                        text = aiResponse,
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .padding(end = 40.dp)
+                            .verticalScroll(responseScrollState),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        val cleanCode = GeminiAgentManager.cleanCodeOutput(aiResponse)
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("CodeVault AI Response", cleanCode)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "Copied clean code to clipboard", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy Code",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading && aiResponse.isNotBlank() && editorViewModel != null,
+                    onClick = {
+                        val codeToApply = GeminiAgentManager.cleanCodeOutput(aiResponse)
+                        editorViewModel?.applyAiGeneratedCode(codeToApply)
+                        Toast.makeText(context, "Applied Code to Editor!", Toast.LENGTH_SHORT).show()
+                        onClose()
+                    }
+                ) {
+                    Icon(Icons.Default.Input, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Apply Code")
+                }
+
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading && aiResponse.isNotBlank() && editorViewModel != null,
+                    onClick = {
+                        val codeToInsert = GeminiAgentManager.cleanCodeOutput(aiResponse)
+                        editorViewModel?.insertAiCodeAtCursor(codeToInsert)
+                        Toast.makeText(context, "Inserted at Cursor!", Toast.LENGTH_SHORT).show()
+                        onClose()
+                    }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("At Cursor")
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
+        // Fixed Input Row pinned at bottom
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -298,30 +510,31 @@ fun AiAssistantSheetContent(onClose: () -> Unit) {
             OutlinedTextField(
                 value = queryText,
                 onValueChange = { queryText = it },
-                placeholder = { Text("Ask AI to generate or fix code...") },
+                placeholder = { Text("Describe code to fix or generate...") },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading,
                 singleLine = true
             )
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(
                 onClick = {
                     if (queryText.isNotBlank()) {
-                        aiResponse = "Analyzing code request for: \"$queryText\"..."
-                        queryText = ""
+                        val input = queryText
+                        val type = if (input.contains("fix", ignoreCase = true)) "FIX" else "GENERATE"
+                        executeAiTask(type, input)
                     }
                 },
+                enabled = !isLoading && queryText.isNotBlank(),
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (!isLoading && queryText.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -369,6 +582,24 @@ fun ActionCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun QuickButton(
+    modifier: Modifier = Modifier,
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    click: () -> Unit
+) {
+    ElevatedButton(
+        onClick = click,
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Icon(icon, null)
+        Spacer(Modifier.width(8.dp))
+        Text(text)
     }
 }
 

@@ -17,18 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.ContentCut
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.SaveAs
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codevaultide.compiler.CompilerManager
 import com.example.codevaultide.editor.EditorViewModel
+import com.example.codevaultide.editor.FileViewModel
+import com.example.codevaultide.ui.settings.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
@@ -59,10 +50,11 @@ import java.util.regex.Pattern
 @Composable
 fun EditorScreen(
     viewModel: EditorViewModel,
-    fileViewModel: com.example.codevaultide.editor.FileViewModel,
-    settingsViewModel: com.example.codevaultide.ui.settings.SettingsViewModel,
+    fileViewModel: FileViewModel,
+    settingsViewModel: SettingsViewModel,
     onBackClick: () -> Unit,
-    onHistoryClick: () -> Unit = {},
+    onRunClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {}
 ) {
     val code by viewModel.code.collectAsState()
     val activeFileName by viewModel.fileName.collectAsState()
@@ -98,9 +90,11 @@ fun EditorScreen(
         )
     }
 
+    // States
     var showSearchDialog by remember { mutableStateOf(false) }
     var showSaveAsDialog by remember { mutableStateOf(false) }
-    var showTerminalSheet by remember { mutableStateOf(value = false) }
+    var showTerminalSheet by remember { mutableStateOf(false) }
+    var showAiSheet by remember { mutableStateOf(false) }
     var terminalOutput by remember { mutableStateOf("") }
     var stdinInput by remember { mutableStateOf("") }
     var isExecuting by remember { mutableStateOf(false) }
@@ -177,7 +171,7 @@ fun EditorScreen(
 
     LaunchedEffect(editorValue.text, isAutoSaveEnabled) {
         if (isAutoSaveEnabled) {
-            delay(2000) // Debounce for 2 seconds
+            delay(2000)
             performSave(showToast = false)
         }
     }
@@ -211,7 +205,7 @@ fun EditorScreen(
     }
 
     fun runCodeExecution() {
-        performSave() // Auto-save before run
+        performSave(showToast = false)
         showTerminalSheet = true
         isExecuting = true
         terminalOutput = ""
@@ -296,10 +290,22 @@ fun EditorScreen(
         floatingActionButton = {
             if (!showTerminalSheet) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
+                    SmallFloatingActionButton(
+                        onClick = { showAiSheet = true },
+                        shape = CircleShape,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "AI Assistant"
+                        )
+                    }
+
                     SmallFloatingActionButton(
                         onClick = { showTerminalSheet = true },
                         shape = CircleShape,
@@ -371,6 +377,7 @@ fun EditorScreen(
                         if (newValue.text != code) {
                             viewModel.updateCode(newValue.text)
                         }
+                        viewModel.updateCursorPosition(newValue.selection.start)
                     },
                     fontSize = fontSize,
                     modifier = Modifier.weight(1f)
@@ -388,7 +395,7 @@ fun EditorScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.45f) // Reduced height from 0.75f to 0.45f
+                    .fillMaxHeight(0.45f)
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 12.dp)
             ) {
@@ -609,6 +616,24 @@ fun EditorScreen(
         }
     }
 
+    if (showAiSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAiSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ) {
+            AiAssistantSheetContent(
+                editorViewModel = viewModel,
+                fileViewModel = fileViewModel,
+                onClose = { showAiSheet = false },
+                onOpenInEditor = { newName, code ->
+                    fileViewModel.createNewFile(newName, code) { newId ->
+                        viewModel.loadFile(newId, newName, code)
+                    }
+                }
+            )
+        }
+    }
+
     if (showSaveAsDialog) {
         var newFileNameInput by remember { mutableStateOf(activeFileName) }
 
@@ -632,13 +657,10 @@ fun EditorScreen(
                         if (newFileNameInput.isNotBlank()) {
                             val newId = System.currentTimeMillis()
                             val currentContent = editorValue.text
-                            
-                            // Create/Update the new file in DB
+
                             fileViewModel.updateFile(newId, newFileNameInput, currentContent)
-                            
-                            // Update ViewModel state to the new file
                             viewModel.loadFile(newId, newFileNameInput, currentContent)
-                            
+
                             showSaveAsDialog = false
                             Toast.makeText(context, "Saved as $newFileNameInput", Toast.LENGTH_SHORT).show()
                         }
