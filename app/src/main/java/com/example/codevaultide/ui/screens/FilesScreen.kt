@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import com.example.codevaultide.R
 import com.example.codevaultide.database.FileEntity
-import com.example.codevaultide.editor.EditorViewModel
 import com.example.codevaultide.editor.FileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,7 +28,6 @@ import com.example.codevaultide.editor.FileViewModel
 fun FilesScreen(
     onBackClick: () -> Unit = {},
     onFileClick: (FileEntity) -> Unit = {},
-    editorViewModel: EditorViewModel,
     fileViewModel: FileViewModel
 ) {
     val filesList by fileViewModel.allFiles.collectAsState(initial = emptyList())

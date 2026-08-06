@@ -1,8 +1,11 @@
 package com.example.codevaultide.editor
 
-
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -12,93 +15,51 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-
-
 @Composable
 fun CodeEditor(
-
-    modifier: Modifier = Modifier,
-
-    code:String,
-
-    onCodeChange:(String)->Unit
-
-){
-
-
+    code: String,
+    onCodeChange: (String) -> Unit,
+) {
+    val scrollState = rememberScrollState()
+    val lines = code.lines()
 
     Row(
-
-        modifier = modifier
-
-    ){
-
-
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1E1E1E))
+            .verticalScroll(scrollState)
+    ) {
+        // Line Numbers
         Column(
-
-            modifier =
-                Modifier
-                    .width(45.dp)
-
-        ){
-
-
-            repeat(
-                code.lines().size
-            ){index->
-
-
+            modifier = Modifier
+                .width(40.dp)
+                .background(Color(0xFF252526))
+                .padding(vertical = 8.dp),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+        ) {
+            lines.forEachIndexed { index, _ ->
                 Text(
-                    text="${index+1}",
-                    color=Color.Gray,
-                    modifier=
-                        Modifier.padding(
-                            start=8.dp
-                        )
+                    text = (index + 1).toString(),
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace
                 )
-
-
             }
-
-
         }
 
-
-
+        // Code Area
         BasicTextField(
-
             value = code,
-
-
-            onValueChange =
-                onCodeChange,
-
-
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(12.dp),
-
-
-
-            textStyle =
-                TextStyle(
-
-                    color=Color.White,
-
-                    fontFamily =
-                        FontFamily.Monospace,
-
-                    fontSize =
-                        15.sp
-
-                )
-
+            onValueChange = onCodeChange,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            textStyle = TextStyle(
+                color = Color.White,
+                fontSize = 14.sp,
+                fontFamily = FontFamily.Monospace
+            ),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary)
         )
-
-
     }
-
-
-
 }

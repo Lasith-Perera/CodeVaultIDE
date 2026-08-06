@@ -239,7 +239,6 @@ fun AppNavigation(
                         editorViewModel.loadFile(file.id, file.name, file.content)
                         navController.navigate(Routes.EDITOR)
                     },
-                    editorViewModel = editorViewModel,
                     fileViewModel = fileViewModel
                 )
             }

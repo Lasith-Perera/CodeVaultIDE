@@ -12,20 +12,11 @@ interface FileDao {
     suspend fun getFileById(id: Long): FileEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-<<<<<<< HEAD
-    suspend fun insertFile(file: FileEntity)
-=======
     suspend fun insertFile(file: FileEntity): Long
->>>>>>> origin/main
 
     @Update
     suspend fun updateFile(file: FileEntity)
 
-<<<<<<< HEAD
-    @Delete
-    suspend fun deleteFile(file: FileEntity)
-}
-=======
     @Query("UPDATE files SET name = :newName, lastModified = :lastModified WHERE id = :id")
     suspend fun updateFileName(id: Long, newName: String, lastModified: Long = System.currentTimeMillis())
 
@@ -35,4 +26,3 @@ interface FileDao {
     @Query("DELETE FROM files WHERE id IN (:ids)")
     suspend fun deleteFilesByIds(ids: List<Long>)
 }
->>>>>>> origin/main
