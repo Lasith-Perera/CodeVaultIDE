@@ -3,9 +3,9 @@ package com.example.codevaultide.editor
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.Room
 import com.example.codevaultide.database.AppDatabase
 import com.example.codevaultide.database.FileEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -20,7 +20,7 @@ class FileViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun createNewFile(name: String, content: String, onCreated: (Long) -> Unit = {}) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
             val id = System.currentTimeMillis()
             val newFile = FileEntity(
                 id = id,
@@ -30,14 +30,14 @@ class FileViewModel(application: Application) : AndroidViewModel(application) {
                 lastModified = System.currentTimeMillis()
             )
             fileDao.insertFile(newFile)
-            withContext(kotlinx.coroutines.Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
                 onCreated(id)
             }
         }
     }
 
     fun updateFile(id: Long, name: String, content: String) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
             val existingFile = fileDao.getFileById(id)
             if (existingFile != null) {
                 val updatedFile = existingFile.copy(
@@ -56,6 +56,24 @@ class FileViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 fileDao.insertFile(newFile)
             }
+        }
+    }
+
+    fun updateFileName(id: Long, newName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            fileDao.updateFileName(id = id, newName = newName, lastModified = System.currentTimeMillis())
+        }
+    }
+
+    fun deleteFile(file: FileEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            fileDao.deleteFile(file)
+        }
+    }
+
+    fun deleteFilesByIds(ids: List<Long>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            fileDao.deleteFilesByIds(ids)
         }
     }
 }

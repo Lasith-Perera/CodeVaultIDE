@@ -22,13 +22,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     fileViewModel: FileViewModel,
     onNewFileClick: (String) -> Unit = {},
     onOpenFileClick: () -> Unit = {},
-    onHistoryClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onRecentFileClick: (FileEntity) -> Unit = {}
 ) {
@@ -36,26 +35,88 @@ fun HomeScreen(
     var showAiSheet by remember { mutableStateOf(false) }
     var newFileName by remember { mutableStateOf("") }
 
+    // List of supported file extensions
+    val supportedExtensions = remember {
+        listOf(
+            ".c", ".cpp", ".java", ".py", ".js", ".ts",
+            ".rs", ".kt", ".cs", ".html", ".txt"
+        )
+    }
+    var selectedExtension by remember { mutableStateOf(supportedExtensions.first()) }
+
     val recentFiles by fileViewModel.allFiles.collectAsState(initial = emptyList())
 
     if (showNewFileDialog) {
         AlertDialog(
-            onDismissRequest = { showNewFileDialog = false },
+            onDismissRequest = {
+                showNewFileDialog = false
+                newFileName = ""
+            },
             title = { Text("Create New File") },
             text = {
-                OutlinedTextField(
-                    value = newFileName,
-                    onValueChange = { newFileName = it },
-                    label = { Text("File Name (e.g. Main.kt)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column {
+                    OutlinedTextField(
+                        value = newFileName,
+                        onValueChange = { newFileName = it },
+                        label = { Text("File Name") },
+                        placeholder = { Text("e.g. main") },
+                        trailingIcon = {
+                            Text(
+                                text = selectedExtension,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Select File Extension:",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    ContextualFlowRow(
+                        itemCount = supportedExtensions.size,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { index ->
+                        val ext = supportedExtensions[index]
+                        FilterChip(
+                            selected = (selectedExtension == ext),
+                            onClick = { selectedExtension = ext },
+                            label = {
+                                Text(
+                                    text = ext,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            shape = RoundedCornerShape(20.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                            )
+                        )
+                    }
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         if (newFileName.isNotBlank()) {
-                            onNewFileClick(newFileName)
+                            val baseName = newFileName.trim().substringBeforeLast(".")
+                            val finalFileName = "$baseName$selectedExtension"
+                            onNewFileClick(finalFileName)
                             showNewFileDialog = false
                             newFileName = ""
                         }
@@ -65,7 +126,12 @@ fun HomeScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showNewFileDialog = false }) {
+                TextButton(
+                    onClick = {
+                        showNewFileDialog = false
+                        newFileName = ""
+                    }
+                ) {
                     Text("Cancel")
                 }
             }
@@ -108,13 +174,14 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Welcome Back",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.ExtraBold
                     )
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Local version control & professional editing",
                     style = MaterialTheme.typography.bodyMedium,
@@ -126,7 +193,7 @@ fun HomeScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     ActionCard(
                         title = "Create New File",
-                        description = "Start a fresh Kotlin or Markdown project",
+                        description = "Start a fresh code project with standard compilers",
                         icon = Icons.Default.Add,
                         onClick = { showNewFileDialog = true }
                     )
@@ -135,31 +202,6 @@ fun HomeScreen(
                         description = "Browse and edit your local workspace",
                         icon = Icons.Default.FolderOpen,
                         onClick = onOpenFileClick
-                    )
-                }
-            }
-
-            item {
-                Text(
-                    text = "Quick Actions",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    QuickButton(
-                        modifier = Modifier.weight(1f),
-                        text = "AI Assistant",
-                        icon = Icons.Default.AutoAwesome,
-                        click = { showAiSheet = true }
-                    )
-                    QuickButton(
-                        modifier = Modifier.weight(1f),
-                        text = "History",
-                        icon = Icons.Default.History,
-                        click = onHistoryClick
                     )
                 }
             }
@@ -331,24 +373,6 @@ fun ActionCard(
 }
 
 @Composable
-fun QuickButton(
-    modifier: Modifier = Modifier,
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    click: () -> Unit
-) {
-    ElevatedButton(
-        onClick = click,
-        modifier = modifier.height(56.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Icon(icon, null)
-        Spacer(Modifier.width(8.dp))
-        Text(text)
-    }
-}
-
-@Composable
 fun RecentFileCard(
     file: FileEntity,
     onClick: () -> Unit = {}
@@ -356,10 +380,17 @@ fun RecentFileCard(
     val sdf = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
     val formattedDate = sdf.format(Date(file.lastModified))
     val fileType = when {
-        file.name.endsWith(".kt") -> "Kotlin Source"
-        file.name.endsWith(".py") -> "Python Source"
+        file.name.endsWith(".c") -> "C Source"
         file.name.endsWith(".cpp") -> "C++ Source"
+        file.name.endsWith(".java") -> "Java Source"
+        file.name.endsWith(".py") -> "Python Source"
         file.name.endsWith(".js") -> "JavaScript"
+        file.name.endsWith(".ts") -> "TypeScript"
+        file.name.endsWith(".rs") -> "Rust Source"
+        file.name.endsWith(".kt") -> "Kotlin Source"
+        file.name.endsWith(".cs") -> "C# Source"
+        file.name.endsWith(".html") -> "HTML Document"
+        file.name.endsWith(".txt") -> "Text Document"
         else -> "Source File"
     }
 

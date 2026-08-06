@@ -2,13 +2,12 @@ package com.example.codevaultide.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -21,16 +20,18 @@ import com.example.codevaultide.editor.EditorViewModel
 import com.example.codevaultide.editor.FileViewModel
 import com.example.codevaultide.ui.screens.*
 import com.example.codevaultide.ui.settings.SettingsViewModel
+import com.example.codevaultide.util.CodeTemplates
 
 object Routes {
     const val HOME = "home"
     const val EDITOR = "editor"
     const val FILES = "files"
-    const val COMPILER = "compiler"
+    const val AI = "ai"
     const val HISTORY = "history"
     const val SETTINGS = "settings"
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation(
     settingsViewModel: SettingsViewModel = viewModel(),
@@ -42,9 +43,11 @@ fun AppNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    var showAiSheet by remember { mutableStateOf(false) }
+
     Scaffold(
         bottomBar = {
-            if (currentRoute in listOf(Routes.HOME, Routes.FILES, Routes.COMPILER, Routes.SETTINGS)) {
+            if (currentRoute in listOf(Routes.HOME, Routes.FILES, Routes.HISTORY)) {
                 NavigationBar {
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
@@ -76,25 +79,19 @@ fun AppNavigation(
                         }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Compiler") },
-                        label = { Text("Run") },
-                        selected = currentRoute == Routes.COMPILER,
+                        icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "AI Assistant") },
+                        label = { Text("AI") },
+                        selected = showAiSheet,
                         onClick = {
-                            navController.navigate(Routes.COMPILER) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                            showAiSheet = true
                         }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                        label = { Text("Settings") },
-                        selected = currentRoute == Routes.SETTINGS,
+                        icon = { Icon(Icons.Default.History, contentDescription = "History") },
+                        label = { Text("History") },
+                        selected = currentRoute == Routes.HISTORY,
                         onClick = {
-                            navController.navigate(Routes.SETTINGS) {
+                            navController.navigate(Routes.HISTORY) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
@@ -116,14 +113,13 @@ fun AppNavigation(
                 HomeScreen(
                     fileViewModel = fileViewModel,
                     onNewFileClick = { fileName ->
-                        val template = "// New File: $fileName\n\nfun main() {\n    println(\"Hello World\")\n}"
+                        val template = CodeTemplates.getInitialCode(fileName)
                         fileViewModel.createNewFile(fileName, template) { newId ->
                             editorViewModel.loadFile(newId, fileName, template)
                             navController.navigate(Routes.EDITOR)
                         }
                     },
                     onOpenFileClick = { navController.navigate(Routes.FILES) },
-                    onHistoryClick = { navController.navigate(Routes.HISTORY) },
                     onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                     onRecentFileClick = { file ->
                         editorViewModel.loadFile(file.id, file.name, file.content)
@@ -137,9 +133,9 @@ fun AppNavigation(
                     viewModel = editorViewModel,
                     fileViewModel = fileViewModel,
                     settingsViewModel = settingsViewModel,
-                    onBackClick = { 
+                    onBackClick = {
                         editorViewModel.loadFile(null, "Main.kt", "")
-                        navController.popBackStack() 
+                        navController.popBackStack()
                     },
                     onHistoryClick = { navController.navigate(Routes.HISTORY) }
                 )
@@ -165,18 +161,20 @@ fun AppNavigation(
                 )
             }
 
-            composable(Routes.COMPILER) {
-                CompilerScreen(
-                    onBackClick = { navController.popBackStack() },
-                    editorViewModel = editorViewModel
-                )
-            }
-
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     settingsViewModel = settingsViewModel,
                     onBackClick = { navController.popBackStack() }
                 )
+            }
+        }
+
+        if (showAiSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showAiSheet = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+            ) {
+                AiAssistantSheetContent(onClose = { showAiSheet = false })
             }
         }
     }
