@@ -89,6 +89,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import com.example.codevaultide.R
 import com.example.codevaultide.compiler.CompilerManager
 import com.example.codevaultide.editor.EditorViewModel
 import kotlinx.coroutines.delay
@@ -362,12 +364,12 @@ fun EditorScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.Code,
-                            contentDescription = "Lang",
-                            modifier = Modifier.size(16.dp),
+                            painter = painterResource(id = R.drawable.ic_logo),
+                            contentDescription = "CodeVault Logo",
+                            modifier = Modifier.size(24.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
                                 text = activeFileName,

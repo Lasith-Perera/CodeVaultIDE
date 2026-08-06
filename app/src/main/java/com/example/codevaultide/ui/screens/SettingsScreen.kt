@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import com.example.codevaultide.R
 import com.example.codevaultide.ui.settings.SettingsViewModel
 
 <<<<<<< HEAD
@@ -50,7 +52,16 @@ fun SettingsScreen(
                     }
                 },
                 title = {
-                    Text("Settings")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Settings")
+                    }
                 }
             )
         }

@@ -1,19 +1,5 @@
 package com.example.codevaultide.ui.screens
 
-<<<<<<< HEAD
-
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.example.codevaultide.editor.EditorViewModel
-
-
-=======
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -32,32 +18,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
+import com.example.codevaultide.R
 import com.example.codevaultide.database.FileEntity
 import com.example.codevaultide.editor.EditorViewModel
 import com.example.codevaultide.editor.FileViewModel
->>>>>>> origin/main
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(
     onBackClick: () -> Unit = {},
-<<<<<<< HEAD
-    onFileClick: () -> Unit = {},
-    editorViewModel: EditorViewModel
-){
-
-
-    Scaffold(
-
-        topBar = {
-
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-=======
     onFileClick: (FileEntity) -> Unit = {},
     editorViewModel: EditorViewModel,
     fileViewModel: FileViewModel
@@ -92,106 +62,25 @@ fun FilesScreen(
                         Icon(
                             imageVector = if (isSelectionMode) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = if (isSelectionMode) "Close Selection" else "Back"
->>>>>>> origin/main
                         )
                     }
                 },
                 title = {
-<<<<<<< HEAD
-                    Text("Files")
-                }
-
-            )
-
-        }
-
-    ){padding ->
-
-
-        Column(
-
-            modifier =
-                Modifier
-                    .padding(padding)
-                    .padding(20.dp)
-
-        ){
-
-
-            FileItem("Main.kt") {
-                editorViewModel.updateCode("// Opened Main.kt\npackage com.example.codevault\n\nfun main() {\n    println(\"Main file\")\n}")
-                onFileClick()
-            }
-
-            FileItem("Login.kt") {
-                editorViewModel.updateCode("// Opened Login.kt\nclass Login {\n    fun authenticate() { }\n}")
-                onFileClick()
-            }
-
-            FileItem("README.md") {
-                editorViewModel.updateCode("# CodeVault IDE\n\nThis is a local IDE with version control.")
-                onFileClick()
-            }
-
-
-        }
-
-
-    }
-
-
-}
-
-
-
-@Composable
-fun FileItem(name:String, onClick: () -> Unit = {}){
-
-
-    Card(
-
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-        onClick = onClick
-
-    ){
-
-
-        Row(
-
-            modifier =
-                Modifier.padding(20.dp)
-
-        ){
-
-
-            Icon(
-                Icons.Default.Description,
-                null
-            )
-
-
-            Spacer(
-                Modifier.width(15.dp)
-            )
-
-
-            Text(name)
-
-
-        }
-
-
-    }
-
-
-=======
-                    Text(
-                        text = if (isSelectionMode) "${selectedFileIds.size} Selected" else "Workspace Files",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!isSelectionMode) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_logo),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = if (isSelectionMode) "${selectedFileIds.size} Selected" else "Workspace Files",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 },
                 actions = {
                     if (filesList.isNotEmpty()) {
@@ -441,5 +330,4 @@ fun FileItem(
             }
         }
     }
->>>>>>> origin/main
 }
