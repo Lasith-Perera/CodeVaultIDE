@@ -1,27 +1,61 @@
 package com.example.codevaultide.editor
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.Room
+import com.example.codevaultide.database.AppDatabase
 import com.example.codevaultide.database.FileEntity
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class FileViewModel : ViewModel() {
-    private val _allFiles = MutableStateFlow<List<FileEntity>>(emptyList())
-    val allFiles: StateFlow<List<FileEntity>> = _allFiles.asStateFlow()
+class FileViewModel(application: Application) : AndroidViewModel(application) {
+    private val db = AppDatabase.getDatabase(application)
+    private val fileDao = db.fileDao()
 
-    fun createNewFile(name: String, content: String) {
-        viewModelScope.launch {
+    val allFiles: StateFlow<List<FileEntity>> = fileDao.getAllFiles()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun createNewFile(name: String, content: String, onCreated: (Long) -> Unit = {}) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val id = System.currentTimeMillis()
             val newFile = FileEntity(
-                id = System.currentTimeMillis(),
+                id = id,
                 name = name,
-                path = "/workspace/$name", // <-- මෙතැනට path එක එකතු කරන්න
+                path = "/workspace/$name",
                 content = content,
                 lastModified = System.currentTimeMillis()
             )
-            _allFiles.value = _allFiles.value + newFile
+            fileDao.insertFile(newFile)
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                onCreated(id)
+            }
+        }
+    }
+
+    fun updateFile(id: Long, name: String, content: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val existingFile = fileDao.getFileById(id)
+            if (existingFile != null) {
+                val updatedFile = existingFile.copy(
+                    name = name,
+                    content = content,
+                    lastModified = System.currentTimeMillis()
+                )
+                fileDao.updateFile(updatedFile)
+            } else {
+                val newFile = FileEntity(
+                    id = id,
+                    name = name,
+                    path = "/workspace/$name",
+                    content = content,
+                    lastModified = System.currentTimeMillis()
+                )
+                fileDao.insertFile(newFile)
+            }
         }
     }
 }

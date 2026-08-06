@@ -10,25 +10,16 @@ import androidx.room.PrimaryKey
     tableName = "versions"
 )
 data class VersionEntity(
-
-
     @PrimaryKey(autoGenerate = true)
-    val id:Int = 0,
+    val id: Long = 0,
 
+    val fileId: Long,
 
-    val fileId:Int,
+    val versionNumber: Int,
 
+    val deltaText: String,
 
-    val versionNumber:Int,
+    val description: String,
 
-
-    val deltaText:String,
-
-
-    val description:String,
-
-
-    val timestamp:Long
-
-
+    val timestamp: Long
 )

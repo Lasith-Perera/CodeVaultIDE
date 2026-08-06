@@ -20,7 +20,7 @@ import com.example.codevaultide.editor.FileViewModel
 @Composable
 fun FilesScreen(
     onBackClick: () -> Unit = {},
-    onFileClick: () -> Unit = {},
+    onFileClick: (FileEntity) -> Unit = { _ -> },
     editorViewModel: EditorViewModel,
     fileViewModel: FileViewModel
 ) {
@@ -60,8 +60,7 @@ fun FilesScreen(
             ) {
                 items(filesList) { file ->
                     FileItem(name = file.name) {
-                        editorViewModel.setCode(file.content)
-                        onFileClick()
+                        onFileClick(file)
                     }
                 }
             }

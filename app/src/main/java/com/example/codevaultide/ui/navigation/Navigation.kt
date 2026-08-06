@@ -51,6 +51,7 @@ fun AppNavigation(
                         label = { Text("Home") },
                         selected = currentRoute == Routes.HOME,
                         onClick = {
+                            editorViewModel.loadFile(null, "Main.kt", "")
                             navController.navigate(Routes.HOME) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
@@ -115,17 +116,17 @@ fun AppNavigation(
                 HomeScreen(
                     fileViewModel = fileViewModel,
                     onNewFileClick = { fileName ->
-                        fileViewModel.createNewFile(fileName, "")
-                        editorViewModel.setFileName(fileName)
-                        editorViewModel.setCode("// New File: $fileName\n\nfun main() {\n    println(\"Hello World\")\n}")
-                        navController.navigate(Routes.EDITOR)
+                        val template = "// New File: $fileName\n\nfun main() {\n    println(\"Hello World\")\n}"
+                        fileViewModel.createNewFile(fileName, template) { newId ->
+                            editorViewModel.loadFile(newId, fileName, template)
+                            navController.navigate(Routes.EDITOR)
+                        }
                     },
                     onOpenFileClick = { navController.navigate(Routes.FILES) },
                     onHistoryClick = { navController.navigate(Routes.HISTORY) },
                     onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                     onRecentFileClick = { file ->
-                        editorViewModel.setFileName(file.name)
-                        editorViewModel.setCode(file.content)
+                        editorViewModel.loadFile(file.id, file.name, file.content)
                         navController.navigate(Routes.EDITOR)
                     }
                 )
@@ -134,8 +135,12 @@ fun AppNavigation(
             composable(Routes.EDITOR) {
                 EditorScreen(
                     viewModel = editorViewModel,
-                    onBackClick = { navController.popBackStack() },
-                    onRunClick = { navController.navigate(Routes.COMPILER) },
+                    fileViewModel = fileViewModel,
+                    settingsViewModel = settingsViewModel,
+                    onBackClick = { 
+                        editorViewModel.loadFile(null, "Main.kt", "")
+                        navController.popBackStack() 
+                    },
                     onHistoryClick = { navController.navigate(Routes.HISTORY) }
                 )
             }
@@ -151,7 +156,10 @@ fun AppNavigation(
             composable(Routes.FILES) {
                 FilesScreen(
                     onBackClick = { navController.popBackStack() },
-                    onFileClick = { navController.navigate(Routes.EDITOR) },
+                    onFileClick = { file ->
+                        editorViewModel.loadFile(file.id, file.name, file.content)
+                        navController.navigate(Routes.EDITOR)
+                    },
                     editorViewModel = editorViewModel,
                     fileViewModel = fileViewModel
                 )

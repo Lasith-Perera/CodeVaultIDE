@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SaveAs
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codevaultide.compiler.CompilerManager
 import com.example.codevaultide.editor.EditorViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
 
@@ -57,12 +59,16 @@ import java.util.regex.Pattern
 @Composable
 fun EditorScreen(
     viewModel: EditorViewModel,
+    fileViewModel: com.example.codevaultide.editor.FileViewModel,
+    settingsViewModel: com.example.codevaultide.ui.settings.SettingsViewModel,
     onBackClick: () -> Unit,
-    onRunClick: () -> Unit = {},
-    onHistoryClick: () -> Unit = {}
+    onHistoryClick: () -> Unit = {},
 ) {
     val code by viewModel.code.collectAsState()
     val activeFileName by viewModel.fileName.collectAsState()
+    val activeFileId by viewModel.fileId.collectAsState()
+    val fontSize by settingsViewModel.fontSize.collectAsState()
+    val isAutoSaveEnabled by settingsViewModel.isAutoSaveEnabled.collectAsState()
 
     val compilerManager = remember { CompilerManager() }
     val scope = rememberCoroutineScope()
@@ -82,18 +88,19 @@ fun EditorScreen(
         }
     }
 
-    var editorValue by remember {
+    var editorValue by remember(activeFileId) {
+        val initialCode = viewModel.code.value
         mutableStateOf(
             TextFieldValue(
-                text = code,
-                selection = TextRange(code.length)
+                text = initialCode,
+                selection = TextRange(initialCode.length)
             )
         )
     }
 
     var showSearchDialog by remember { mutableStateOf(false) }
     var showSaveAsDialog by remember { mutableStateOf(false) }
-    var showTerminalSheet by remember { mutableStateOf(false) }
+    var showTerminalSheet by remember { mutableStateOf(value = false) }
     var terminalOutput by remember { mutableStateOf("") }
     var stdinInput by remember { mutableStateOf("") }
     var isExecuting by remember { mutableStateOf(false) }
@@ -141,7 +148,7 @@ fun EditorScreen(
 
     fun handlePaste() {
         val clipData = clipboardManager.primaryClip
-        if (clipData != null && clipData.itemCount > 0) {
+        if (clipData != null && (clipData.itemCount > 0)) {
             val pasteText = clipData.getItemAt(0).text?.toString() ?: ""
             if (pasteText.isNotEmpty()) {
                 val start = editorValue.selection.min
@@ -155,9 +162,24 @@ fun EditorScreen(
         }
     }
 
-    fun performSave() {
-        viewModel.updateCode(editorValue.text)
-        Toast.makeText(context, "$activeFileName saved successfully!", Toast.LENGTH_SHORT).show()
+    fun performSave(showToast: Boolean = true) {
+        val currentText = editorValue.text
+        viewModel.updateCode(currentText)
+        val idToSave = activeFileId ?: System.currentTimeMillis()
+        if (activeFileId == null) {
+            viewModel.setFileId(idToSave)
+        }
+        fileViewModel.updateFile(idToSave, activeFileName, currentText)
+        if (showToast) {
+            Toast.makeText(context, "$activeFileName saved successfully!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(editorValue.text, isAutoSaveEnabled) {
+        if (isAutoSaveEnabled) {
+            delay(2000) // Debounce for 2 seconds
+            performSave(showToast = false)
+        }
     }
 
     fun formatInteractiveTerminalOutput(rawOutput: String, stdin: String): String {
@@ -189,6 +211,7 @@ fun EditorScreen(
     }
 
     fun runCodeExecution() {
+        performSave() // Auto-save before run
         showTerminalSheet = true
         isExecuting = true
         terminalOutput = ""
@@ -252,6 +275,9 @@ fun EditorScreen(
                     }
                     IconButton(onClick = { showSaveAsDialog = true }) {
                         Icon(Icons.Default.SaveAs, contentDescription = "Save As")
+                    }
+                    IconButton(onClick = onHistoryClick) {
+                        Icon(Icons.Default.History, contentDescription = "Version History")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -337,16 +363,19 @@ fun EditorScreen(
                 }
             }
 
-            CodeEditorArea(
-                value = editorValue,
-                onValueChange = { newValue ->
-                    editorValue = newValue
-                    if (newValue.text != code) {
-                        viewModel.updateCode(newValue.text)
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            )
+            key(activeFileId) {
+                CodeEditorArea(
+                    value = editorValue,
+                    onValueChange = { newValue ->
+                        editorValue = newValue
+                        if (newValue.text != code) {
+                            viewModel.updateCode(newValue.text)
+                        }
+                    },
+                    fontSize = fontSize,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 
@@ -601,9 +630,17 @@ fun EditorScreen(
                 Button(
                     onClick = {
                         if (newFileNameInput.isNotBlank()) {
-                            viewModel.setFileName(newFileNameInput)
-                            performSave()
+                            val newId = System.currentTimeMillis()
+                            val currentContent = editorValue.text
+                            
+                            // Create/Update the new file in DB
+                            fileViewModel.updateFile(newId, newFileNameInput, currentContent)
+                            
+                            // Update ViewModel state to the new file
+                            viewModel.loadFile(newId, newFileNameInput, currentContent)
+                            
                             showSaveAsDialog = false
+                            Toast.makeText(context, "Saved as $newFileNameInput", Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) {
@@ -636,7 +673,8 @@ fun EditorScreen(
 private fun CodeEditorArea(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
-    modifier: Modifier = Modifier
+    fontSize: Float,
+    modifier: Modifier = Modifier,
 ) {
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
@@ -645,6 +683,8 @@ private fun CodeEditorArea(
     val lineCount = lines.size.coerceAtLeast(1)
 
     val syntaxTransformation = remember { CodeSyntaxVisualTransformation() }
+    val editorFontSize = fontSize.sp
+    val editorLineHeight = (fontSize * 1.5f).sp
 
     Surface(
         modifier = modifier,
@@ -667,8 +707,8 @@ private fun CodeEditorArea(
                         text = (index + 1).toString(),
                         color = Color(0xFF6F7785),
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 14.sp,
-                        lineHeight = 22.sp
+                        fontSize = editorFontSize,
+                        lineHeight = editorLineHeight
                     )
                 }
             }
@@ -688,8 +728,8 @@ private fun CodeEditorArea(
                     textStyle = TextStyle(
                         color = Color(0xFFE6EDF3),
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 14.sp,
-                        lineHeight = 22.sp
+                        fontSize = editorFontSize,
+                        lineHeight = editorLineHeight
                     ),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(
                         MaterialTheme.colorScheme.primary
@@ -701,7 +741,7 @@ private fun CodeEditorArea(
                                     text = "Start writing code here...",
                                     color = Color(0xFF687080),
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 14.sp
+                                    fontSize = editorFontSize
                                 )
                             }
                             innerTextField()
@@ -716,7 +756,7 @@ private fun CodeEditorArea(
 class CodeSyntaxVisualTransformation : VisualTransformation {
 
     private val keywordPattern = Pattern.compile(
-        "\\b(def|class|if|else|elif|for|while|return|import|from|as|try|except|finally|raise|with|lambda|yield|async|await|pass|break|continue|global|nonlocal|assert|del|fun|val|var|public|private|protected|class|package|include|using|namespace|int|float|double|char|void|boolean|bool|true|false|null|None|True|False)\\b"
+        "\\b(def|class|if|else|elif|for|while|return|import|from|as|try|except|finally|raise|with|lambda|yield|async|await|pass|break|continue|global|nonlocal|assert|del|fun|val|var|public|private|protected|package|include|using|namespace|int|float|double|char|void|boolean|bool|true|false|null|None|True|False)\\b"
     )
 
     private val stringPattern = Pattern.compile("\".*?\"|'.*?'")

@@ -11,11 +11,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 
 class VersionHistoryViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val db = Room.databaseBuilder(
-        application,
-        AppDatabase::class.java, "codevault-db"
-    ).build()
-    
+    private val db = AppDatabase.getDatabase(application)
     private val versionDao = db.versionDao()
 
     private val _currentFileId = MutableStateFlow<Long>(0L)

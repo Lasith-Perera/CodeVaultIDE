@@ -12,6 +12,19 @@ class EditorViewModel : ViewModel() {
     private val _fileName = MutableStateFlow("Main.kt")
     val fileName: StateFlow<String> = _fileName.asStateFlow()
 
+    private val _fileId = MutableStateFlow<Long?>(null)
+    val fileId: StateFlow<Long?> = _fileId.asStateFlow()
+
+    fun setFileId(id: Long?) {
+        _fileId.value = id
+    }
+
+    fun loadFile(id: Long?, name: String, content: String) {
+        _fileId.value = id
+        _fileName.value = name
+        _code.value = content
+    }
+
     fun updateCode(newCode: String) {
         _code.value = newCode
     }
