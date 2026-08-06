@@ -40,6 +40,21 @@ class FileViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val existingFile = fileDao.getFileById(id)
             if (existingFile != null) {
+                // Versioning Logic: Only snapshot if content changed significantly
+                if (existingFile.content != content) {
+                    val versionDao = db.versionDao()
+                    val count = versionDao.getVersionCount(id)
+                    versionDao.insertVersion(
+                        com.example.codevaultide.database.VersionEntity(
+                            fileId = id,
+                            versionNumber = count + 1,
+                            deltaText = content,
+                            description = "Manual Save",
+                            timestamp = System.currentTimeMillis()
+                        )
+                    )
+                }
+
                 val updatedFile = existingFile.copy(
                     name = name,
                     content = content,
@@ -55,6 +70,17 @@ class FileViewModel(application: Application) : AndroidViewModel(application) {
                     lastModified = System.currentTimeMillis()
                 )
                 fileDao.insertFile(newFile)
+                
+                // Initial version
+                db.versionDao().insertVersion(
+                    com.example.codevaultide.database.VersionEntity(
+                        fileId = id,
+                        versionNumber = 1,
+                        deltaText = content,
+                        description = "Initial Version",
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
             }
         }
     }
