@@ -59,9 +59,10 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
 
     implementation(platform(libs.androidx.compose.bom))
 
@@ -80,6 +81,7 @@ dependencies {
 
     // OkHttp library for Piston API calls
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

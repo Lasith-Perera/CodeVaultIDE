@@ -1,25 +1,30 @@
 package com.example.codevaultide.ui.screens
 
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.codevaultide.R
 import com.example.codevaultide.database.FileEntity
+import com.example.codevaultide.editor.EditorViewModel
 import com.example.codevaultide.editor.FileViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -31,10 +36,8 @@ fun HomeScreen(
     onRecentFileClick: (FileEntity) -> Unit = {}
 ) {
     var showNewFileDialog by remember { mutableStateOf(false) }
-    var showAiSheet by remember { mutableStateOf(false) }
     var newFileName by remember { mutableStateOf("") }
 
-    // List of supported file extensions
     val supportedExtensions = remember {
         listOf(
             ".c", ".cpp", ".java", ".py", ".js", ".ts",
@@ -144,10 +147,9 @@ fun HomeScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_logo),
+                            imageVector = Icons.Default.Code,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
@@ -206,14 +208,29 @@ fun HomeScreen(
                 }
             }
 
-            if (recentFiles.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "Recent Files",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
+            item {
+                Text(
+                    text = "Recent Files",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
 
+            if (recentFiles.isEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    ) {
+                        Text(
+                            text = "No files created yet!",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
                 items(recentFiles) { file ->
                     RecentFileCard(
                         file = file,
@@ -225,15 +242,6 @@ fun HomeScreen(
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
-        }
-    }
-
-    if (showAiSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showAiSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-        ) {
-            AiAssistantSheetContent(onClose = { showAiSheet = false })
         }
     }
 }
