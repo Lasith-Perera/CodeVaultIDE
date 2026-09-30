@@ -61,6 +61,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -78,6 +80,7 @@ dependencies {
     // OkHttp library for Piston API calls
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+<<<<<<< HEAD
     // diffutils for delta-based versioning
     implementation(libs.diffutils)
 
@@ -88,6 +91,8 @@ dependencies {
     // Required for rendering remote Markdown images, including YouTube thumbnails.
     implementation("com.mikepenz:multiplatform-markdown-renderer-coil3:0.37.0")
 
+=======
+>>>>>>> origin/main
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

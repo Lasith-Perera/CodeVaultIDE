@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package com.example.codevaultide.ui.screens
 
 import android.content.Context
@@ -352,4 +353,359 @@ fun RecentFileCard(
             }
         }
     }
+=======
+package com.example.codevaultide.ui.screens
+
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.example.codevaultide.database.FileEntity
+import com.example.codevaultide.editor.EditorViewModel
+import com.example.codevaultide.editor.FileViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun HomeScreen(
+    fileViewModel: FileViewModel,
+    onNewFileClick: (String) -> Unit = {},
+    onOpenFileClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+    onRecentFileClick: (FileEntity) -> Unit = {}
+) {
+    var showNewFileDialog by remember { mutableStateOf(false) }
+    var newFileName by remember { mutableStateOf("") }
+
+    val supportedExtensions = remember {
+        listOf(
+            ".c", ".cpp", ".java", ".py", ".js", ".ts",
+            ".rs", ".kt", ".cs", ".html", ".txt"
+        )
+    }
+    var selectedExtension by remember { mutableStateOf(supportedExtensions.first()) }
+
+    val recentFiles by fileViewModel.allFiles.collectAsState(initial = emptyList())
+
+    if (showNewFileDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showNewFileDialog = false
+                newFileName = ""
+            },
+            title = { Text("Create New File") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newFileName,
+                        onValueChange = { newFileName = it },
+                        label = { Text("File Name") },
+                        placeholder = { Text("e.g. main") },
+                        trailingIcon = {
+                            Text(
+                                text = selectedExtension,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Select File Extension:",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    ContextualFlowRow(
+                        itemCount = supportedExtensions.size,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { index ->
+                        val ext = supportedExtensions[index]
+                        FilterChip(
+                            selected = (selectedExtension == ext),
+                            onClick = { selectedExtension = ext },
+                            label = {
+                                Text(
+                                    text = ext,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            shape = RoundedCornerShape(20.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                            )
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newFileName.isNotBlank()) {
+                            val baseName = newFileName.trim().substringBeforeLast(".")
+                            val finalFileName = "$baseName$selectedExtension"
+                            onNewFileClick(finalFileName)
+                            showNewFileDialog = false
+                            newFileName = ""
+                        }
+                    }
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showNewFileDialog = false
+                        newFileName = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Code,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "CodeVault IDE",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Welcome Back",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Local version control & professional editing",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ActionCard(
+                        title = "Create New File",
+                        description = "Start a fresh code project with standard compilers",
+                        icon = Icons.Default.Add,
+                        onClick = { showNewFileDialog = true }
+                    )
+                    ActionCard(
+                        title = "Open Existing File",
+                        description = "Browse and edit your local workspace",
+                        icon = Icons.Default.FolderOpen,
+                        onClick = onOpenFileClick
+                    )
+                }
+            }
+
+            item {
+                Text(
+                    text = "Recent Files",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+
+            if (recentFiles.isEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    ) {
+                        Text(
+                            text = "No files created yet!",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                items(recentFiles) { file ->
+                    RecentFileCard(
+                        file = file,
+                        onClick = { onRecentFileClick(file) }
+                    )
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ActionCard(
+    title: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(12.dp).size(28.dp)
+                )
+            }
+            Spacer(Modifier.width(20.dp))
+            Column {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentFileCard(
+    file: FileEntity,
+    onClick: () -> Unit = {}
+) {
+    val sdf = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
+    val formattedDate = sdf.format(Date(file.lastModified))
+    val fileType = when {
+        file.name.endsWith(".c") -> "C Source"
+        file.name.endsWith(".cpp") -> "C++ Source"
+        file.name.endsWith(".java") -> "Java Source"
+        file.name.endsWith(".py") -> "Python Source"
+        file.name.endsWith(".js") -> "JavaScript"
+        file.name.endsWith(".ts") -> "TypeScript"
+        file.name.endsWith(".rs") -> "Rust Source"
+        file.name.endsWith(".kt") -> "Kotlin Source"
+        file.name.endsWith(".cs") -> "C# Source"
+        file.name.endsWith(".html") -> "HTML Document"
+        file.name.endsWith(".txt") -> "Text Document"
+        else -> "Source File"
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Description,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    file.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    "$fileType • $formattedDate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+>>>>>>> origin/main
 }
