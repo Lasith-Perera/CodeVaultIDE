@@ -1,15 +1,10 @@
 package com.example.codevaultide.versioncontrol
 
-/**
- * Handles the restoration of files to previous versions.
- */
-class RollbackManager(private val deltaManager: DeltaManager) {
-
-    /**
-     * Reconstructs a file version using the delta.
-     * In a full implementation, this might chain multiple deltas.
-     */
-    fun reconstructFile(baseText: String, delta: Delta): String {
-        return deltaManager.applyDelta(baseText, delta)
+/** Reconstructs a version by applying its incremental patches from a checkpoint. */
+class RollbackManager(private val diffManager: DiffManager = DiffManager()) {
+    fun reconstructFile(baseText: String, patches: List<String>): String {
+        var result = baseText
+        patches.forEach { result = diffManager.applyPatch(result, it) }
+        return result
     }
 }

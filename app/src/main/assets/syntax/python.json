@@ -1,0 +1,1 @@
+{"keywords":["if","else","elif","for","while","return","def","class","import","from","as","try","except","finally","with","lambda","yield","async","await","pass","break","continue","global","nonlocal","assert","del","True","False","None"],"colors":{"keywords":"#C678DD","strings":"#98C379","comments":"#5C6370","numbers":"#D19A66","functions":"#61AFEF","annotations":"#E06C75"}}

@@ -18,6 +18,9 @@ class SettingsViewModel : ViewModel() {
     private val _isVersionBackupEnabled = MutableStateFlow(true)
     val isVersionBackupEnabled: StateFlow<Boolean> = _isVersionBackupEnabled.asStateFlow()
 
+    private val _encoding = MutableStateFlow("UTF-8")
+    val encoding: StateFlow<String> = _encoding.asStateFlow()
+
     fun setTheme(isDark: Boolean) {
         _isDarkTheme.value = isDark
     }
@@ -32,5 +35,9 @@ class SettingsViewModel : ViewModel() {
 
     fun setVersionBackupEnabled(enabled: Boolean) {
         _isVersionBackupEnabled.value = enabled
+    }
+
+    fun setEncoding(encoding: String) {
+        _encoding.value = encoding
     }
 }

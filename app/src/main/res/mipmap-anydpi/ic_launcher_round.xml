@@ -1,6 +1,41 @@
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
-    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
-</adaptive-icon>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Balanced Icon Group with adjusted proportions -->
+    <group
+        android:translateX="0"
+        android:translateY="0">
+
+        <!-- Left Bracket < (Increased to normal size relative to pencil) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M37,39 L22,54 L37,69 L43,63 L32,54 L43,45 Z" />
+
+        <!-- Right Bracket > (Increased to normal size relative to pencil) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M71,39 L86,54 L71,69 L65,63 L76,54 L65,45 Z" />
+
+        <!-- Center Pencil Icon (Maintained normal size) -->
+        <!-- Pencil Body & Cap -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M50.5,35 C50.5,33 57.5,33 57.5,35 L57.5,62 L50.5,62 Z" />
+
+        <!-- Detail line in theme color -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#0061A3"
+            android:strokeWidth="1.2"
+            android:pathData="M50.5,41 L57.5,41" />
+
+        <!-- Pencil Tip -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M50.5,64 L57.5,64 L54,76 Z" />
+    </group>
+
+</vector>

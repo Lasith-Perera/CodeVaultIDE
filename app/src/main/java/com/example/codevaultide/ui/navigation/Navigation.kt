@@ -1,18 +1,13 @@
 package com.example.codevaultide.ui.navigation
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -30,8 +25,8 @@ object Routes {
     const val HOME = "home"
     const val EDITOR = "editor"
     const val FILES = "files"
-    const val AI = "ai"
     const val HISTORY = "history"
+    const val DIFF = "diff"
     const val SETTINGS = "settings"
 }
 
@@ -43,39 +38,22 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val editorViewModel: EditorViewModel = viewModel()
+    val isVersionBackupEnabled by settingsViewModel.isVersionBackupEnabled.collectAsState()
+    var diffTargetContent by remember { mutableStateOf<String?>(null) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    var showAiSheet by remember { mutableStateOf(false) }
-
     Scaffold(
         bottomBar = {
-            AnimatedVisibility(
-                visible = currentRoute in listOf(Routes.HOME, Routes.FILES, Routes.HISTORY),
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-            ) {
+            if (currentRoute in listOf(Routes.HOME, Routes.FILES, Routes.HISTORY)) {
                 NavigationBar {
                     NavigationBarItem(
-                        icon = {
-                            val isSelected = currentRoute == Routes.HOME
-                            val scale by animateFloatAsState(
-                                targetValue = if (isSelected) 1.15f else 1f,
-                                animationSpec = tween(300),
-                                label = "HomeScale"
-                            )
-                            Icon(
-                                imageVector = Icons.Default.Home,
-                                contentDescription = "Home",
-                                modifier = Modifier.scale(scale)
-                            )
-                        },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
                         label = { Text("Home") },
                         selected = currentRoute == Routes.HOME,
-                        alwaysShowLabel = false,
                         onClick = {
-                            editorViewModel.loadFile(null, "Main.kt", "")
+                            editorViewModel.loadFile(null, "Main.kt", "", isVersionBackupEnabled)
                             navController.navigate(Routes.HOME) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
@@ -86,22 +64,9 @@ fun AppNavigation(
                         }
                     )
                     NavigationBarItem(
-                        icon = {
-                            val isSelected = currentRoute == Routes.FILES
-                            val scale by animateFloatAsState(
-                                targetValue = if (isSelected) 1.15f else 1f,
-                                animationSpec = tween(300),
-                                label = "FilesScale"
-                            )
-                            Icon(
-                                imageVector = Icons.Default.Folder,
-                                contentDescription = "Files",
-                                modifier = Modifier.scale(scale)
-                            )
-                        },
+                        icon = { Icon(Icons.Default.Folder, contentDescription = "Files") },
                         label = { Text("Files") },
                         selected = currentRoute == Routes.FILES,
-                        alwaysShowLabel = false,
                         onClick = {
                             navController.navigate(Routes.FILES) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -113,42 +78,9 @@ fun AppNavigation(
                         }
                     )
                     NavigationBarItem(
-                        icon = {
-                            val scale by animateFloatAsState(
-                                targetValue = if (showAiSheet) 1.15f else 1f,
-                                animationSpec = tween(300),
-                                label = "AiScale"
-                            )
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = "AI Assistant",
-                                modifier = Modifier.scale(scale)
-                            )
-                        },
-                        label = { Text("AI") },
-                        selected = showAiSheet,
-                        alwaysShowLabel = false,
-                        onClick = {
-                            showAiSheet = true
-                        }
-                    )
-                    NavigationBarItem(
-                        icon = {
-                            val isSelected = currentRoute == Routes.HISTORY
-                            val scale by animateFloatAsState(
-                                targetValue = if (isSelected) 1.15f else 1f,
-                                animationSpec = tween(300),
-                                label = "HistoryScale"
-                            )
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = "History",
-                                modifier = Modifier.scale(scale)
-                            )
-                        },
+                        icon = { Icon(Icons.Default.History, contentDescription = "History") },
                         label = { Text("History") },
                         selected = currentRoute == Routes.HISTORY,
-                        alwaysShowLabel = false,
                         onClick = {
                             navController.navigate(Routes.HISTORY) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -166,31 +98,7 @@ fun AppNavigation(
         NavHost(
             navController = navController,
             startDestination = Routes.HOME,
-            modifier = Modifier.padding(innerPadding),
-            enterTransition = {
-                slideIntoContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Left,
-                    animationSpec = tween(400)
-                ) + fadeIn(animationSpec = tween(400))
-            },
-            exitTransition = {
-                slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Left,
-                    animationSpec = tween(400)
-                ) + fadeOut(animationSpec = tween(400))
-            },
-            popEnterTransition = {
-                slideIntoContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Right,
-                    animationSpec = tween(400)
-                ) + fadeIn(animationSpec = tween(400))
-            },
-            popExitTransition = {
-                slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Right,
-                    animationSpec = tween(400)
-                ) + fadeOut(animationSpec = tween(400))
-            }
+            modifier = Modifier.padding(innerPadding)
         ) {
             composable(Routes.HOME) {
                 HomeScreen(
@@ -198,14 +106,14 @@ fun AppNavigation(
                     onNewFileClick = { fileName ->
                         val template = CodeTemplates.getInitialCode(fileName)
                         fileViewModel.createNewFile(fileName, template) { newId ->
-                            editorViewModel.loadFile(newId, fileName, template)
+                            editorViewModel.loadFile(newId, fileName, template, isVersionBackupEnabled)
                             navController.navigate(Routes.EDITOR)
                         }
                     },
                     onOpenFileClick = { navController.navigate(Routes.FILES) },
                     onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                     onRecentFileClick = { file ->
-                        editorViewModel.loadFile(file.id, file.name, file.content)
+                        editorViewModel.loadFile(file.id, file.name, file.content, isVersionBackupEnabled)
                         navController.navigate(Routes.EDITOR)
                     }
                 )
@@ -217,7 +125,7 @@ fun AppNavigation(
                     fileViewModel = fileViewModel,
                     settingsViewModel = settingsViewModel,
                     onBackClick = {
-                        editorViewModel.loadFile(null, "Main.kt", "")
+                        editorViewModel.loadFile(null, "Main.kt", "", isVersionBackupEnabled)
                         navController.popBackStack()
                     },
                     onHistoryClick = { navController.navigate(Routes.HISTORY) }
@@ -228,17 +136,26 @@ fun AppNavigation(
                 HistoryScreen(
                     editorViewModel = editorViewModel,
                     onBackClick = { navController.popBackStack() },
-                    onCompareClick = { /* Diff view */ }
+                    onCompareClick = { content -> diffTargetContent = content; navController.navigate(Routes.DIFF) }
                 )
+            }
+
+            composable(Routes.DIFF) {
+                val currentCode by editorViewModel.code.collectAsState()
+                val targetCode = diffTargetContent ?: ""
+                val diffManager = remember { com.example.codevaultide.versioncontrol.DiffManager() }
+                val diffLines = remember(currentCode, targetCode) { diffManager.computeDiff(targetCode, currentCode) }
+                DiffScreen(diffLines = diffLines, onBackClick = { navController.popBackStack() })
             }
 
             composable(Routes.FILES) {
                 FilesScreen(
                     onBackClick = { navController.popBackStack() },
                     onFileClick = { file ->
-                        editorViewModel.loadFile(file.id, file.name, file.content)
+                        editorViewModel.loadFile(file.id, file.name, file.content, isVersionBackupEnabled)
                         navController.navigate(Routes.EDITOR)
                     },
+                    editorViewModel = editorViewModel,
                     fileViewModel = fileViewModel
                 )
             }
@@ -248,15 +165,6 @@ fun AppNavigation(
                     settingsViewModel = settingsViewModel,
                     onBackClick = { navController.popBackStack() }
                 )
-            }
-        }
-
-        if (showAiSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showAiSheet = false },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-            ) {
-                AiAssistantSheetContent(onClose = { showAiSheet = false })
             }
         }
     }

@@ -18,9 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.painterResource
-import com.example.codevaultide.R
 import com.example.codevaultide.database.FileEntity
+import com.example.codevaultide.editor.EditorViewModel
 import com.example.codevaultide.editor.FileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +27,7 @@ import com.example.codevaultide.editor.FileViewModel
 fun FilesScreen(
     onBackClick: () -> Unit = {},
     onFileClick: (FileEntity) -> Unit = {},
+    editorViewModel: EditorViewModel,
     fileViewModel: FileViewModel
 ) {
     val filesList by fileViewModel.allFiles.collectAsState(initial = emptyList())
@@ -64,21 +64,10 @@ fun FilesScreen(
                     }
                 },
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (!isSelectionMode) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_logo),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text(
-                            text = if (isSelectionMode) "${selectedFileIds.size} Selected" else "Workspace Files",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text(
+                        text = if (isSelectionMode) "${selectedFileIds.size} Selected" else "Workspace Files",
+                        fontWeight = FontWeight.Bold
+                    )
                 },
                 actions = {
                     if (filesList.isNotEmpty()) {

@@ -95,6 +95,18 @@ object CodeTemplates {
                 Welcome to CodeVault IDE!
             """.trimIndent()
 
+            fileName.endsWith(".md") || fileName.endsWith(".markdown") -> """
+                # Welcome to CodeVault IDE
+
+                This is a Markdown document.
+
+                ## Getting Started
+
+                - Write your **Markdown** here.
+                - Use `inline code` when needed.
+                - Preview the document in the editor.
+            """.trimIndent()
+
             else -> "// New File: $fileName\n"
         }
     }

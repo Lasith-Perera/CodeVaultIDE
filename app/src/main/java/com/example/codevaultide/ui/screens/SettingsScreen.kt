@@ -1,5 +1,6 @@
 package com.example.codevaultide.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,11 +10,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.codevaultide.R
 import com.example.codevaultide.ui.settings.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +25,8 @@ fun SettingsScreen(
     val fontSize by settingsViewModel.fontSize.collectAsState()
     val isAutoSaveEnabled by settingsViewModel.isAutoSaveEnabled.collectAsState()
     val isVersionBackupEnabled by settingsViewModel.isVersionBackupEnabled.collectAsState()
+    val encoding by settingsViewModel.encoding.collectAsState()
+    var showEncodingDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -40,16 +41,7 @@ fun SettingsScreen(
                     }
                 },
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_logo),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Settings")
-                    }
+                    Text("Settings")
                 }
             )
         }
@@ -157,6 +149,48 @@ fun SettingsScreen(
                     onCheckedChange = { settingsViewModel.setVersionBackupEnabled(it) }
                 )
             }
+
+            HorizontalDivider()
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showEncodingDialog = true }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("File Encoding", style = MaterialTheme.typography.bodyLarge)
+                    Text(encoding, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
+    }
+
+    if (showEncodingDialog) {
+        val encodings = listOf("UTF-8", "US-ASCII", "ISO-8859-1", "UTF-16")
+        AlertDialog(
+            onDismissRequest = { showEncodingDialog = false },
+            title = { Text("Select Encoding") },
+            text = {
+                Column {
+                    encodings.forEach { enc ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                settingsViewModel.setEncoding(enc)
+                                showEncodingDialog = false
+                            }.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = enc == encoding, onClick = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(enc)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showEncodingDialog = false }) { Text("Cancel") } }
+        )
     }
 }
