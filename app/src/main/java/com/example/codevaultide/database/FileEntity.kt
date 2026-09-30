@@ -9,5 +9,6 @@ data class FileEntity(
     val name: String,
     val path: String,
     val content: String,
-    val lastModified: Long
+    val lastModified: Long,
+    val isReadOnly: Boolean = false
 )

@@ -44,7 +44,7 @@ fun CompilerScreen(
                     }
                 },
                 title = {
-                    Text("Kotlin Compiler", fontWeight = FontWeight.Bold)
+                    Text("Online Compiler", fontWeight = FontWeight.Bold)
                 }
             )
         }
@@ -58,13 +58,13 @@ fun CompilerScreen(
             Button(
                 onClick = {
                     isCompiling = true
-                    output = "> Initializing compiler..."
+                    output = "> Connecting to online compiler..."
                     scope.launch {
                         val result = compilerManager.compileAndRun(
                             language = "kotlin",
                             code = code
                         )
-                        output = result.second
+                        output = result
                         isCompiling = false
                     }
                 },
@@ -103,7 +103,7 @@ fun CompilerScreen(
             ) {
                 Text(
                     text = output,
-                    color = if (output.contains("Error") || output.contains("failed") || output.contains("ERROR"))
+                    color = if (output.contains("Error") || output.contains("failed"))
                         Color(0xFFFFB4AB)
                     else
                         Color(0xFFE0E0E0),
